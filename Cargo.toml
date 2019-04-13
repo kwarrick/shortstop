@@ -1,0 +1,11 @@
+[package]
+name = "shortstop"
+version = "0.1.0"
+authors = ["Kevin Warrick <kevinjwarrick@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+capstone = "0.5.0"
+goblin = "0.0.21"
+libc = "0.2.51"
+nix = "0.13.0"
