@@ -1,6 +1,5 @@
 use std::collections::VecDeque;
 use std::ffi::CString;
-use std::fmt;
 // use std::mem::transmute;
 use std::path::PathBuf;
 
@@ -12,6 +11,9 @@ use capstone::prelude::*;
 use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use structopt::StructOpt;
+
+mod error;
+use error::{Error, Result};
 
 mod cli;
 use cli::{Cmd, Opt};
@@ -46,9 +48,31 @@ impl<'a> Debugger<'a> {
         };
     }
 
-    fn run_command(&self, cmd: Cmd) {
-        dbg!(cmd);
-        //
+    fn exec(&self, cmd: Cmd) {
+        match cmd {
+            Cmd::Break { loc } => self.break_command(loc),
+            Cmd::Examine { fmt, address } => self.x_command(fmt, address),
+            Cmd::Run { args } => self.run_command(args),
+            Cmd::Repeat => self.repeat_command(),
+            _ => (),
+        }
+    }
+
+    fn break_command(&self, loc: u64) {
+        unimplemented!()
+    }
+
+    fn run_command(&self, args: Vec<String>) {
+        // let prog = CString::new(self.path.canonicalize()?.to_str().unwrap())?;
+        // let args = self
+        //     .args
+        //     .iter()
+        //     .map(|s| CString::new(s.clone()).unwrap())
+        //     .collect::<Vec<_>>();
+    }
+
+    fn x_command(&self, fmt: Option<cli::Fmt>, address: Option<u64>) {
+        dbg!((fmt, address));
     }
 
     fn repeat_command(&self) {
@@ -56,15 +80,22 @@ impl<'a> Debugger<'a> {
     }
 }
 
-fn parse_command(line: String) -> Result<Cmd, structopt::clap::Error> {
-    let line = match &line[..2] {
-        "x/" | "p/" => line.replacen("/", " ", 1),
-        _ => line,
-    };
-    Cmd::from_iter_safe(line.split_whitespace())
+fn parse_command(line: &str) -> Result<Cmd> {
+    match line.len() {
+        0 => Ok(Cmd::Repeat),
+        1 => Cmd::from_iter_safe(vec![line]),
+        _ => {
+            let line = match &line[..2] {
+                "x/" | "p/" => line.replacen("/", " ", 1),
+                _ => line.to_owned(),
+            };
+            Cmd::from_iter_safe(line.split_whitespace())
+        }
+    }
+    .map_err(|e| Error::command(line, e))
 }
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<()> {
     let opt = Opt::from_args();
     let debugger = Debugger::new(opt.prog, opt.args);
 
@@ -74,9 +105,9 @@ fn main() -> Result<(), Box<std::error::Error>> {
         match readline {
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
-                match parse_command(line) {
-                    Ok(cmd) => debugger.run_command(cmd),
-                    Err(_e) => println!("{}", _e),
+                match parse_command(&line) {
+                    Ok(cmd) => debugger.exec(cmd),
+                    Err(e) => println!("{}", e),
                 }
             }
             Err(ReadlineError::Interrupted) => {
@@ -92,13 +123,6 @@ fn main() -> Result<(), Box<std::error::Error>> {
             }
         }
     }
-
-    // let prog = CString::new(opt.prog.canonicalize()?.to_str().unwrap())?;
-    // let args = opt
-    //     .args
-    //     .iter()
-    //     .map(|s| CString::new(s.clone()).unwrap())
-    //     .collect::<Vec<_>>();
 
     // match fork().expect("fork failed") {
     //     ForkResult::Child => {

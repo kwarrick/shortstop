@@ -14,6 +14,49 @@ pub struct Opt {
     pub args: Vec<String>,
 }
 
+/// Interactive commands
+#[derive(StructOpt, Debug)]
+#[structopt(raw(setting = "AppSettings::NoBinaryName"))]
+#[structopt(raw(setting = "AppSettings::VersionlessSubcommands"))]
+#[structopt(raw(setting = "AppSettings::InferSubcommands"))]
+#[structopt(raw(setting = "AppSettings::SubcommandRequired"))]
+#[structopt(raw(global_setting = "AppSettings::DontCollapseArgsInUsage"))]
+#[structopt(template = "{subcommands}")]
+pub enum Cmd {
+    #[structopt(raw(setting = "AppSettings::Hidden"))]
+    Repeat,
+    #[structopt(
+        name = "run",
+        about = "Start debugged program",
+        template = "{bin} {positionals}"
+    )]
+    Run {
+        #[structopt(name = "ARGS")]
+        args: Vec<String>,
+    },
+    #[structopt(
+        name = "break",
+        about = "Set breakpoint at specified location.",
+        template = "{bin} {positionals}"
+    )]
+    Break {
+        #[structopt(name = "LOCATION")]
+        loc: u64,
+    },
+    #[structopt(
+        name = "x",
+        template = "x/FMT ADDRESS",
+        about = "Examine memory."
+    )]
+    #[structopt(raw(setting = "AppSettings::AllowLeadingHyphen"))]
+    Examine {
+        #[structopt(name = "FMT", parse(try_from_str = "parse_fmt"))]
+        fmt: Option<Fmt>,
+        #[structopt(name = "ADDRESS")]
+        address: Option<u64>,
+    },
+}
+
 /// Format for x, print, and display commands, i.e. x/FMT.
 #[derive(Debug, Default, PartialEq)]
 pub struct Fmt {
@@ -39,6 +82,7 @@ impl std::convert::From<std::num::ParseIntError> for FmtError {
     }
 }
 
+/// Parse a FMT for commands like x/FMT, e.g x/32wx
 fn parse_fmt(arg: &str) -> Result<Fmt, FmtError> {
     let mut fmt: Fmt = Default::default();
 
@@ -79,21 +123,6 @@ fn parse_fmt(arg: &str) -> Result<Fmt, FmtError> {
         }
     }
     Ok(fmt)
-}
-
-#[derive(StructOpt, Debug)]
-#[structopt(raw(setting = "AppSettings::NoBinaryName"))]
-#[structopt(raw(setting = "AppSettings::DisableHelpFlags"))]
-#[structopt(raw(setting = "AppSettings::InferSubcommands"))]
-#[structopt(raw(setting = "AppSettings::SubcommandRequired"))]
-pub enum Cmd {
-    #[structopt(name = "x")]
-    Examine {
-        #[structopt(name = "FMT", parse(try_from_str = "parse_fmt"))]
-        fmt: Fmt,
-        #[structopt(name = "ADDRESS")]
-        address: u64,
-    },
 }
 
 #[cfg(test)]
