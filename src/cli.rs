@@ -1,7 +1,7 @@
 use std::num::ParseIntError;
 use std::path::PathBuf;
 
-use failure::Fail;
+use failure::{bail, Error, Fail};
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
@@ -66,24 +66,8 @@ pub struct Fmt {
     size: Option<char>,
 }
 
-#[derive(Debug, Fail, PartialEq)]
-enum FmtError {
-    #[fail(display = "Undefined output format \"{}\"", _0)]
-    InvalidOutputFormat(char),
-    #[fail(display = "Undefined output size \"{}\"", _0)]
-    InvalidOutputSize(char),
-    #[fail(display = "Undefined repeat count \"{}\"", _0)]
-    InvalidRepeatCount(#[fail(cause)] ParseIntError),
-}
-
-impl std::convert::From<std::num::ParseIntError> for FmtError {
-    fn from(error: ParseIntError) -> FmtError {
-        FmtError::InvalidRepeatCount(error)
-    }
-}
-
 /// Parse a FMT for commands like x/FMT, e.g x/32wx
-fn parse_fmt(arg: &str) -> Result<Fmt, FmtError> {
+fn parse_fmt(arg: &str) -> Result<Fmt, Error> {
     let mut fmt: Fmt = Default::default();
 
     let mut s = arg;
@@ -110,7 +94,7 @@ fn parse_fmt(arg: &str) -> Result<Fmt, FmtError> {
             'o' | 'x' | 'd' | 'u' | 't' | 'f' | 'a' | 'i' | 'c' | 's' | 'z' => {
                 fmt.format = Some(c)
             }
-            _ => return Err(FmtError::InvalidOutputFormat(c)),
+            _ => bail!("Invalid output format: {}", c),
         }
     }
     if let Some(c) = letters.next() {
@@ -119,7 +103,7 @@ fn parse_fmt(arg: &str) -> Result<Fmt, FmtError> {
             'o' | 'x' | 'd' | 'u' | 't' | 'f' | 'a' | 'i' | 'c' | 's' | 'z' => {
                 fmt.format = Some(c)
             }
-            _ => return Err(FmtError::InvalidOutputSize(c)),
+            _ => bail!("Invalid output size: {}", c),
         }
     }
     Ok(fmt)
@@ -132,8 +116,8 @@ mod tests {
     #[test]
     fn test_parse_fmt() {
         assert_eq!(
-            parse_fmt("32xw"),
-            Ok(Fmt {
+            parse_fmt("32xw").ok(),
+            Some(Fmt {
                 reverse: false,
                 repeat: Some(32),
                 format: Some('x'),
@@ -141,8 +125,8 @@ mod tests {
             })
         );
         assert_eq!(
-            parse_fmt("-32wx"),
-            Ok(Fmt {
+            parse_fmt("-32wx").ok(),
+            Some(Fmt {
                 reverse: true,
                 repeat: Some(32),
                 format: Some('x'),
@@ -153,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_parse_fmt_error() {
-        assert_eq!(parse_fmt("32kx"), Err(FmtError::InvalidOutputFormat('k')));
-        assert_eq!(parse_fmt("32wk"), Err(FmtError::InvalidOutputSize('k')));
+        assert!(parse_fmt("32kx").is_err());
+        assert!(parse_fmt("32wk").is_err());
     }
 }
