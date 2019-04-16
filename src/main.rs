@@ -2,11 +2,12 @@ use rustyline::error::ReadlineError;
 use rustyline::Editor;
 use structopt::StructOpt;
 
+mod error;
+
 mod cli;
 use cli::Opt;
 
 mod dbg;
-mod error;
 use dbg::Debugger;
 
 type Result<T> = std::result::Result<T, failure::Error>;
@@ -33,7 +34,7 @@ fn pretty_error(err: &failure::Error) -> String {
 }
 
 fn prompt(opt: Opt) -> Result<()> {
-    let debugger = Debugger::new(opt.prog, opt.args)?;
+    let mut debugger = Debugger::new(opt.prog, opt.args)?;
 
     let mut rl = Editor::<()>::new();
     loop {

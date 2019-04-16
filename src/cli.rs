@@ -31,6 +31,7 @@ pub enum Cmd {
         about = "Start debugged program",
         template = "{bin} {positionals}"
     )]
+    #[structopt(raw(setting = "AppSettings::TrailingVarArg"))]
     Run {
         #[structopt(name = "ARGS")]
         args: Vec<String>,

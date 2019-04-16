@@ -1,39 +1,118 @@
 use std::ffi::CString;
-use std::path::PathBuf;
+use std::path::Path;
 // use std::collections::VecDeque;
 // use std::mem::transmute;
 
-use capstone::prelude::*;
 use failure::ResultExt;
+use nix::sys::ptrace;
+use nix::sys::wait::waitpid;
+use nix::unistd::{execvp, fork, ForkResult, Pid};
+
+// use capstone::prelude::*;
 // use goblin::elf::Elf;
-// use nix::sys::ptrace;
-// use nix::sys::wait::waitpid;
-// use nix::unistd::{execvp, fork, ForkResult};
 
 use crate::cli::{Cmd, Fmt};
 use crate::error::{ErrorKind, Result};
 
-pub struct Debugger<'a> {
+pub struct Debugger {
     prog: CString,
     args: Vec<CString>,
     // elf: Box<Elf<'a>>,
-    cs: Box<Capstone<'a>>,
-    debugged: Option<Debugged>,
+    // cs: Box<Capstone<'a>>,
+    debugged: Option<Box<dyn Debugged>>,
 }
 
-pub struct Debugged {}
+pub trait Debugged {
+    /// Start debugged program
+    fn run(&mut self, args: Vec<CString>);
+    /// Continue program execution
+    fn cont(&mut self);
+    /// Step one instruction exactly
+    fn stepi(&mut self, count: usize);
+    /// Set breakpoint at specified location
+    fn breakpoint(&mut self, vaddr: u64);
+    /// Read memory of debugged program
+    fn read(&mut self, vaddr: u64, size: usize);
+}
 
-impl Debugged {
-    pub fn new(path: PathBuf, args: Vec<String>) -> Self {
-        Debugged {}
+struct Ptraced {
+    prog: CString,
+    pid: Option<Pid>,
+}
+
+impl Ptraced {
+    fn new(prog: CString) -> Box<dyn Debugged> {
+        Box::new(Ptraced { prog, pid: None })
     }
 }
 
-impl<'a> Debugger<'a> {
-    pub fn new(path: PathBuf, args: Vec<String>) -> Result<Self> {
+impl Debugged for Ptraced {
+    fn run(&mut self, args: Vec<CString>) {
+        // TODO: replace expects
+        match fork().expect("fork failed") {
+            ForkResult::Child => {
+                // Initiate a trace with ptrace(PTRACE_TRACEME, ...)
+                ptrace::traceme().expect("ptrace failed");
+
+                // Execute PROG with [ARGS]
+                execvp(&self.prog, &args).expect("execvp failed");
+            }
+            ForkResult::Parent { child } => {
+                self.pid = Some(child);
+
+                // Wait for PTRACE_TRACEME in child
+                let status = waitpid(child, None).expect("waitpid failed");
+                dbg!(status);
+
+                // Terminate tracee if the tracer exits
+                ptrace::setoptions(child, ptrace::Options::PTRACE_O_EXITKILL)
+                    .expect("ptrace failed");
+
+                // Stop the tracee on the next clone(2)
+                ptrace::setoptions(child, ptrace::Options::PTRACE_O_TRACECLONE)
+                    .expect("ptrace failed");
+
+                // Wait for clone(2) event, tracee should stop execution at
+                // _start, which is likely actually _start inside ld.so(8) for
+                // dynamically linked executables.
+                let event = ptrace::getevent(child).expect("ptrace failed");
+                dbg!(event);
+
+                // ptrace::cont(child, None).unwrap();
+            }
+        }
+    }
+
+    fn cont(&mut self) {
+        if let Some(pid) = self.pid {
+            ptrace::cont(pid, None).unwrap();
+
+            // Wait for tracee to finish
+            let status = waitpid(pid, None).unwrap();
+            dbg!(status);
+        }
+    }
+
+    fn stepi(&mut self, count: usize) {
+        unimplemented!()
+    }
+
+    fn breakpoint(&mut self, vaddr: u64) {
+        unimplemented!()
+    }
+
+    fn read(&mut self, vaddr: u64, size: usize) {
+        unimplemented!()
+    }
+}
+
+/// Interactive debugger type
+impl Debugger {
+    pub fn new<P: AsRef<Path>>(path: P, args: Vec<String>) -> Result<Self> {
         let prog = CString::new(
-            path.canonicalize()
-                .with_context(|_| ErrorKind::path(path))?
+            path.as_ref()
+                .canonicalize()
+                .with_context(|_| ErrorKind::path(&path))?
                 .to_str()
                 .unwrap(),
         )
@@ -43,13 +122,13 @@ impl<'a> Debugger<'a> {
             .map(|s| CString::new(s.clone()).unwrap())
             .collect::<Vec<_>>();
 
-        let cs = Capstone::new()
-            .x86()
-            .mode(arch::x86::ArchMode::Mode64)
-            .syntax(arch::x86::ArchSyntax::Intel)
-            .detail(true)
-            .build()
-            .expect("capstone failed");
+        // let cs = Capstone::new()
+        //     .x86()
+        //     .mode(arch::x86::ArchMode::Mode64)
+        //     .syntax(arch::x86::ArchSyntax::Intel)
+        //     .detail(true)
+        //     .build()
+        //     .expect("capstone failed");
 
         // let buf = std::fs::read(std::env::args().nth(1).unwrap())
         //     .expect("read failed");
@@ -58,13 +137,13 @@ impl<'a> Debugger<'a> {
         Ok(Debugger {
             prog,
             args,
-            // elf: Box::new(elf),
-            cs: Box::new(cs),
             debugged: None,
+            // elf: Box::new(elf),
+            // cs: Box::new(cs),
         })
     }
 
-    pub fn exec(&self, cmd: Cmd) {
+    pub fn exec(&mut self, cmd: Cmd) {
         match cmd {
             Cmd::Break { loc } => self.break_command(loc),
             Cmd::Examine { fmt, address } => self.x_command(fmt, address),
@@ -77,8 +156,23 @@ impl<'a> Debugger<'a> {
         unimplemented!()
     }
 
-    fn run_command(&self, args: Vec<String>) {
-        //
+    fn run_command(&mut self, args: Vec<String>) {
+        if self.debugged.is_some() {
+            // prompt
+        }
+
+        let debugged = Some(Ptraced::new(self.prog.clone()));
+
+        if let Some(target) = self.debugged.as_mut() {
+            let args = if args.len() > 0 {
+                args.iter()
+                    .map(|s| CString::new(s.clone()).unwrap())
+                    .collect::<Vec<_>>()
+            } else {
+                self.args.clone()
+            };
+            target.run(args);
+        }
     }
 
     fn x_command(&self, fmt: Option<Fmt>, address: Option<u64>) {
