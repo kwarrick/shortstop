@@ -2,8 +2,10 @@ use std::ffi::CString;
 use std::path::{Path, PathBuf};
 
 use failure::ResultExt;
-use nix::sys::ptrace;
-use nix::sys::wait::waitpid;
+use nix::sys::{
+    ptrace,
+    wait::{waitpid, WaitStatus},
+};
 use nix::unistd::{execvp, fork, ForkResult, Pid};
 
 use crate::cli::{prompt_yes_no, Cmd, Fmt};
@@ -31,13 +33,18 @@ pub trait Debugged {
 struct Ptraced {
     prog: CString,
     pid: Option<Pid>,
+    status: Option<WaitStatus>,
 }
 
 impl Ptraced {
     fn new<P: AsRef<Path>>(path: P) -> Box<dyn Debugged> {
         let prog = CString::new(path.as_ref().to_str().unwrap())
             .expect("null byte in string");
-        Box::new(Ptraced { prog, pid: None })
+        Box::new(Ptraced {
+            prog,
+            pid: None,
+            status: None,
+        })
     }
 }
 
@@ -72,8 +79,7 @@ impl Debugged for Ptraced {
                 self.pid = Some(child);
 
                 // Wait for PTRACE_TRACEME in child
-                let status = waitpid(child, None).expect("waitpid failed");
-                dbg!(status);
+                let _ = waitpid(child, None).expect("waitpid failed");
 
                 // Terminate tracee if the tracer exits
                 ptrace::setoptions(child, ptrace::Options::PTRACE_O_EXITKILL)
@@ -86,10 +92,9 @@ impl Debugged for Ptraced {
                 // Wait for clone(2) event, tracee should stop execution at
                 // _start, which is likely actually _start inside ld.so(8) for
                 // dynamically linked executables.
-                let event = ptrace::getevent(child).expect("ptrace failed");
-                dbg!(event);
+                let _ = ptrace::getevent(child).expect("ptrace failed");
 
-                // ptrace::cont(child, None).unwrap();
+                self.cont();
             }
         }
     }
@@ -99,8 +104,25 @@ impl Debugged for Ptraced {
             ptrace::cont(pid, None).unwrap();
 
             // Wait for debugged program
-            let status = waitpid(pid, None).unwrap();
-            dbg!(status);
+            let status = waitpid(pid, None);
+
+            match status {
+                Ok(WaitStatus::Exited(pid, code)) => {
+                    println!("[Inferior 1 (process {}) exited normally]", pid);
+                    self.pid = None;
+                }
+                Ok(WaitStatus::Signaled(_, signal, _)) => {
+                    println!("Program received signal {}", signal);
+                }
+                Err(e) => {
+                    println!("error: waitpid: {}", e);
+                }
+                Ok(_) => (),
+            }
+
+            self.status = status.ok();
+        } else {
+            println!("The program is not being run.");
         }
     }
 
@@ -167,6 +189,7 @@ impl Debugger {
                 return;
             }
         }
+
         println!(
             "Starting program: {} {}",
             self.prog.display(),
