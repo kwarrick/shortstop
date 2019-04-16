@@ -1,5 +1,5 @@
 use std::ffi::CString;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 // use std::collections::VecDeque;
 // use std::mem::transmute;
 
@@ -11,12 +11,12 @@ use nix::unistd::{execvp, fork, ForkResult, Pid};
 // use capstone::prelude::*;
 // use goblin::elf::Elf;
 
-use crate::cli::{Cmd, Fmt};
+use crate::cli::{prompt_yes_no, Cmd, Fmt};
 use crate::error::{ErrorKind, Result};
 
 pub struct Debugger {
-    prog: CString,
-    args: Vec<CString>,
+    prog: PathBuf,
+    args: Vec<String>,
     // elf: Box<Elf<'a>>,
     // cs: Box<Capstone<'a>>,
     debugged: Option<Box<dyn Debugged>>,
@@ -24,7 +24,7 @@ pub struct Debugger {
 
 pub trait Debugged {
     /// Start debugged program
-    fn run(&mut self, args: Vec<CString>);
+    fn run(&mut self, args: Vec<String>);
     /// Continue program execution
     fn cont(&mut self);
     /// Step one instruction exactly
@@ -41,13 +41,31 @@ struct Ptraced {
 }
 
 impl Ptraced {
-    fn new(prog: CString) -> Box<dyn Debugged> {
+    fn new<P: AsRef<Path>>(path: P) -> Box<dyn Debugged> {
+        let prog = CString::new(path.as_ref().to_str().unwrap())
+            .expect("null byte in string");
         Box::new(Ptraced { prog, pid: None })
     }
 }
 
+impl Drop for Ptraced {
+    fn drop(&mut self) {
+        if let Some(child) = self.pid {
+            if let Err(e) = ptrace::kill(child) {
+                eprintln!("error: kill: {} ({})", e, child);
+            }
+            dbg!(waitpid(child, None));
+        }
+    }
+}
+
 impl Debugged for Ptraced {
-    fn run(&mut self, args: Vec<CString>) {
+    fn run(&mut self, args: Vec<String>) {
+        let args = args
+            .iter()
+            .map(|s| CString::new(s.clone()).unwrap())
+            .collect::<Vec<_>>();
+
         // TODO: replace expects
         match fork().expect("fork failed") {
             ForkResult::Child => {
@@ -87,7 +105,7 @@ impl Debugged for Ptraced {
         if let Some(pid) = self.pid {
             ptrace::cont(pid, None).unwrap();
 
-            // Wait for tracee to finish
+            // Wait for debugged program
             let status = waitpid(pid, None).unwrap();
             dbg!(status);
         }
@@ -109,18 +127,10 @@ impl Debugged for Ptraced {
 /// Interactive debugger type
 impl Debugger {
     pub fn new<P: AsRef<Path>>(path: P, args: Vec<String>) -> Result<Self> {
-        let prog = CString::new(
-            path.as_ref()
-                .canonicalize()
-                .with_context(|_| ErrorKind::path(&path))?
-                .to_str()
-                .unwrap(),
-        )
-        .unwrap();
-        let args = args
-            .iter()
-            .map(|s| CString::new(s.clone()).unwrap())
-            .collect::<Vec<_>>();
+        let prog = path
+            .as_ref()
+            .canonicalize()
+            .with_context(|_| ErrorKind::path(&path))?;
 
         // let cs = Capstone::new()
         //     .x86()
@@ -158,20 +168,24 @@ impl Debugger {
 
     fn run_command(&mut self, args: Vec<String>) {
         if self.debugged.is_some() {
-            // prompt
+            println!("The program being debugged has been started already.");
+            if !prompt_yes_no("Start it from the beginning?") {
+                println!("Program not restarted.");
+                return;
+            }
         }
+        println!(
+            "Starting program: {} {}",
+            self.prog.display(),
+            self.args.join(" "),
+        );
 
-        let debugged = Some(Ptraced::new(self.prog.clone()));
-
+        self.debugged = Some(Ptraced::new(self.prog.clone()));
         if let Some(target) = self.debugged.as_mut() {
-            let args = if args.len() > 0 {
-                args.iter()
-                    .map(|s| CString::new(s.clone()).unwrap())
-                    .collect::<Vec<_>>()
-            } else {
-                self.args.clone()
-            };
-            target.run(args);
+            if args.len() > 0 {
+                self.args = args;
+            }
+            target.run(self.args.clone());
         }
     }
 

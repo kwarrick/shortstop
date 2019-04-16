@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use failure::{bail, Error};
+use rustyline::{error::ReadlineError, Editor};
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
 
@@ -126,6 +127,38 @@ pub fn parse_command(line: &str) -> Result<Cmd, ErrorKind> {
     .map_err(|e| ErrorKind::command(line, e))?;
 
     Ok(cmd)
+}
+
+pub fn prompt_yes_no<P: AsRef<str>>(prompt: P) -> bool {
+    let mut rl = rustyline::Editor::<()>::new();
+    let readline = rl.readline(&format!("{} (y or n) ", prompt.as_ref()));
+    loop {
+        match readline {
+            Ok(ref line) if line.len() > 0 => {
+                match line.chars().next().unwrap() {
+                    'y' | 'Y' => break true,
+                    'n' | 'N' => break false,
+                    _ => {
+                        println!("Please answer y or n");
+                        continue;
+                    }
+                }
+            }
+            Err(ReadlineError::Interrupted) => {
+                println!("Quit");
+                break false;
+            }
+            Err(ReadlineError::Eof) => {
+                println!("EOF [assumed Y]");
+                break true;
+            }
+            Err(err) => {
+                println!("error: {:?}", err);
+                break false;
+            }
+            _ => continue,
+        }
+    }
 }
 
 #[cfg(test)]

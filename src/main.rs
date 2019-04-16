@@ -1,5 +1,4 @@
-use rustyline::error::ReadlineError;
-use rustyline::Editor;
+use rustyline::{error::ReadlineError, Editor};
 use structopt::StructOpt;
 
 mod error;
