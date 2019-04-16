@@ -1,9 +1,10 @@
-use std::num::ParseIntError;
 use std::path::PathBuf;
 
-use failure::{bail, Error, Fail};
+use failure::{bail, Error};
 use structopt::clap::AppSettings;
 use structopt::StructOpt;
+
+use crate::error::ErrorKind;
 
 /// Command line options
 #[derive(StructOpt, Debug)]
@@ -107,6 +108,23 @@ fn parse_fmt(arg: &str) -> Result<Fmt, Error> {
         }
     }
     Ok(fmt)
+}
+
+pub fn parse_command(line: &str) -> Result<Cmd, ErrorKind> {
+    let cmd = match line.len() {
+        0 => Ok(Cmd::Repeat),
+        1 => Cmd::from_iter_safe(vec![line]),
+        _ => {
+            let line = match &line[..2] {
+                "x/" | "p/" => line.replacen("/", " ", 1),
+                _ => line.to_owned(),
+            };
+            Cmd::from_iter_safe(line.split_whitespace())
+        }
+    }
+    .map_err(|e| ErrorKind::command(line, e))?;
+
+    Ok(cmd)
 }
 
 #[cfg(test)]
