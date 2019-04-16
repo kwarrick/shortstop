@@ -1,4 +1,4 @@
-CFLAGS=-Wall -Werror -std=c89 -save-temps -m32 -pedantic-errors -O0
+CFLAGS=-Wall -Werror -std=c89 -save-temps -pedantic-errors -O0
 
 hello: hello.c
 

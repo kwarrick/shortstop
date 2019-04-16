@@ -11,6 +11,14 @@ use dbg::Debugger;
 
 type Result<T> = std::result::Result<T, failure::Error>;
 
+fn main() {
+    let opt = Opt::from_args();
+    if let Err(e) = prompt(opt) {
+        eprintln!("{}", pretty_error(&e));
+        std::process::exit(2);
+    }
+}
+
 /// Return a prettily formatted error, including its entire causal chain.
 /// credit: https://github.com/BurntSushi/
 fn pretty_error(err: &failure::Error) -> String {
@@ -22,14 +30,6 @@ fn pretty_error(err: &failure::Error) -> String {
         prev = next;
     }
     pretty
-}
-
-fn main() {
-    let opt = Opt::from_args();
-    if let Err(e) = prompt(opt) {
-        eprintln!("{}", pretty_error(&e));
-        std::process::exit(2);
-    }
 }
 
 fn prompt(opt: Opt) -> Result<()> {
