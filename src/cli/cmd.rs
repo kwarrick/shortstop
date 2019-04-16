@@ -1,21 +1,9 @@
-use std::path::PathBuf;
-
-use failure::{bail, Error};
-use rustyline::{error::ReadlineError, Editor};
+use failure::bail;
 use structopt::{clap::AppSettings, StructOpt};
 
-use crate::error::ErrorKind;
+use super::Error;
 
-/// Command line options
-#[derive(StructOpt, Debug)]
-pub struct Opt {
-    #[structopt(name = "PROG", parse(from_os_str))]
-    pub prog: PathBuf,
-    #[structopt(name = "ARGS")]
-    pub args: Vec<String>,
-}
-
-/// Interactive commands
+/// Interactive prompt commands
 #[derive(StructOpt, Debug)]
 #[structopt(raw(setting = "AppSettings::NoBinaryName"))]
 #[structopt(raw(setting = "AppSettings::VersionlessSubcommands"))]
@@ -78,7 +66,7 @@ pub struct Fmt {
 }
 
 /// Parse a FMT for commands like x/FMT, e.g x/32wx
-fn parse_fmt(arg: &str) -> Result<Fmt, Error> {
+fn parse_fmt(arg: &str) -> Result<Fmt, failure::Error> {
     let mut fmt: Fmt = Default::default();
 
     let mut s = arg;
@@ -120,7 +108,8 @@ fn parse_fmt(arg: &str) -> Result<Fmt, Error> {
     Ok(fmt)
 }
 
-pub fn parse_command(line: &str) -> Result<Cmd, ErrorKind> {
+/// Tokenize and parse a command line string
+pub fn parse_command(line: &str) -> Result<Cmd, Error> {
     let cmd = match line.len() {
         0 => Ok(Cmd::Repeat),
         1 => Cmd::from_iter_safe(vec![line]),
@@ -132,72 +121,7 @@ pub fn parse_command(line: &str) -> Result<Cmd, ErrorKind> {
             Cmd::from_iter_safe(line.split_whitespace())
         }
     }
-    .map_err(|e| ErrorKind::command(line, e))?;
+    .map_err(|e| Error::command(line, e))?;
 
     Ok(cmd)
-}
-
-pub fn prompt_yes_no<P: AsRef<str>>(prompt: P) -> bool {
-    let mut rl = rustyline::Editor::<()>::new();
-    let readline = rl.readline(&format!("{} (y or n) ", prompt.as_ref()));
-    loop {
-        match readline {
-            Ok(ref line) if line.len() > 0 => {
-                match line.chars().next().unwrap() {
-                    'y' | 'Y' => break true,
-                    'n' | 'N' => break false,
-                    _ => {
-                        println!("Please answer y or n");
-                        continue;
-                    }
-                }
-            }
-            Err(ReadlineError::Interrupted) => {
-                println!("Quit");
-                break false;
-            }
-            Err(ReadlineError::Eof) => {
-                println!("EOF [assumed Y]");
-                break true;
-            }
-            Err(err) => {
-                println!("error: {:?}", err);
-                break false;
-            }
-            _ => continue,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_parse_fmt() {
-        assert_eq!(
-            parse_fmt("32xw").ok(),
-            Some(Fmt {
-                reverse: false,
-                repeat: Some(32),
-                format: Some('x'),
-                size: Some('w'),
-            })
-        );
-        assert_eq!(
-            parse_fmt("-32wx").ok(),
-            Some(Fmt {
-                reverse: true,
-                repeat: Some(32),
-                format: Some('x'),
-                size: Some('w'),
-            })
-        );
-    }
-
-    #[test]
-    fn test_parse_fmt_error() {
-        assert!(parse_fmt("32kx").is_err());
-        assert!(parse_fmt("32wk").is_err());
-    }
 }

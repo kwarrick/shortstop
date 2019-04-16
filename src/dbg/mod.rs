@@ -8,8 +8,8 @@ use nix::sys::{
 };
 use nix::unistd::{execvp, fork, ForkResult, Pid};
 
-use crate::cli::{prompt_yes_no, Cmd, Fmt};
-use crate::error::{ErrorKind, Result};
+mod error;
+use error::{ErrorKind, Result};
 
 pub struct Debugger {
     prog: PathBuf,
@@ -17,7 +17,7 @@ pub struct Debugger {
     debugged: Option<Box<dyn Debugged>>,
 }
 
-pub trait Debugged {
+trait Debugged {
     /// Set breakpoint at specified location
     fn breakpoint(&mut self, vaddr: u64);
     /// Continue program execution
@@ -154,21 +154,11 @@ impl Debugger {
         })
     }
 
-    pub fn exec(&mut self, cmd: Cmd) {
-        match cmd {
-            Cmd::Break { loc } => self.break_command(loc),
-            Cmd::Continue { n } => self.continue_command(n),
-            Cmd::Examine { fmt, address } => self.x_command(fmt, address),
-            Cmd::Repeat => self.repeat_command(),
-            Cmd::Run { args } => self.run_command(args),
-        }
-    }
-
-    fn break_command(&self, loc: u64) {
+    pub fn breakpoint(&self, loc: u64) {
         unimplemented!()
     }
 
-    fn continue_command(&mut self, n: usize) {
+    pub fn cont(&mut self, n: usize) {
         if self.debugged.is_none() {
             println!("The program is not being run.");
             return;
@@ -181,14 +171,14 @@ impl Debugger {
         }
     }
 
-    fn run_command(&mut self, args: Vec<String>) {
-        if self.debugged.is_some() {
-            println!("The program being debugged has been started already.");
-            if !prompt_yes_no("Start it from the beginning?") {
-                println!("Program not restarted.");
-                return;
-            }
-        }
+    pub fn run(&mut self, args: Vec<String>) {
+        // if self.debugged.is_some() {
+        //     println!("The program being debugged has been started already.");
+        //     if !prompt_yes_no("Start it from the beginning?") {
+        //         println!("Program not restarted.");
+        //         return;
+        //     }
+        // }
 
         println!(
             "Starting program: {} {}",
@@ -205,11 +195,18 @@ impl Debugger {
         }
     }
 
-    fn x_command(&self, fmt: Option<Fmt>, address: Option<u64>) {
-        dbg!((fmt, address));
-    }
+    // pub fn examine(
+    //     &self,
+    //     addr: Option<u64>,
+    //     reverse: bool,
+    //     repeat: usize,
+    //     size: char,
+    //     format: char,
+    // ) {
+    //     unimplemented!()
+    // }
 
-    fn repeat_command(&self) {
+    pub fn repeat(&self) {
         unimplemented!()
     }
 }

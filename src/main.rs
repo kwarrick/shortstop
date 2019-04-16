@@ -1,10 +1,8 @@
 use rustyline::{error::ReadlineError, Editor};
 use structopt::StructOpt;
 
-mod error;
-
 mod cli;
-use cli::Opt;
+use cli::{Cmd, Opt};
 
 mod dbg;
 use dbg::Debugger;
@@ -29,7 +27,7 @@ fn prompt(opt: Opt) -> Result<()> {
             Ok(line) => {
                 rl.add_history_entry(line.as_ref());
                 match cli::parse_command(&line) {
-                    Ok(cmd) => debugger.exec(cmd),
+                    Ok(cmd) => handle_command(&mut debugger, cmd),
                     Err(e) => println!("{}", e),
                 }
             }
@@ -48,6 +46,17 @@ fn prompt(opt: Opt) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Dispatch commands to debugger
+pub fn handle_command(debugger: &mut Debugger, cmd: Cmd) {
+    match cmd {
+        Cmd::Break { loc } => debugger.breakpoint(loc),
+        Cmd::Continue { n } => debugger.cont(n),
+        Cmd::Examine { fmt, address } => unimplemented!(),
+        Cmd::Repeat => debugger.repeat(),
+        Cmd::Run { args } => debugger.run(args),
+    }
 }
 
 /// Return a prettily formatted error, including its entire causal chain.
