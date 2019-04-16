@@ -16,16 +16,16 @@ pub struct Debugger {
 }
 
 pub trait Debugged {
-    /// Start debugged program
-    fn run(&mut self, args: Vec<String>);
-    /// Continue program execution
-    fn cont(&mut self);
-    /// Step one instruction exactly
-    fn step(&mut self, count: usize);
     /// Set breakpoint at specified location
     fn breakpoint(&mut self, vaddr: u64);
+    /// Continue program execution
+    fn cont(&mut self);
     /// Read memory of debugged program
     fn read(&mut self, vaddr: u64, size: usize);
+    /// Start debugged program
+    fn run(&mut self, args: Vec<String>);
+    /// Step one instruction exactly
+    fn step(&mut self, count: usize);
 }
 
 struct Ptraced {
