@@ -21,7 +21,7 @@ pub trait Debugged {
     /// Continue program execution
     fn cont(&mut self);
     /// Step one instruction exactly
-    fn stepi(&mut self, count: usize);
+    fn step(&mut self, count: usize);
     /// Set breakpoint at specified location
     fn breakpoint(&mut self, vaddr: u64);
     /// Read memory of debugged program
@@ -104,15 +104,15 @@ impl Debugged for Ptraced {
         }
     }
 
-    fn stepi(&mut self, count: usize) {
-        unimplemented!()
-    }
-
     fn breakpoint(&mut self, vaddr: u64) {
         unimplemented!()
     }
 
     fn read(&mut self, vaddr: u64, size: usize) {
+        unimplemented!()
+    }
+
+    fn step(&mut self, count: usize) {
         unimplemented!()
     }
 }
@@ -135,10 +135,10 @@ impl Debugger {
     pub fn exec(&mut self, cmd: Cmd) {
         match cmd {
             Cmd::Break { loc } => self.break_command(loc),
-            Cmd::Examine { fmt, address } => self.x_command(fmt, address),
-            Cmd::Run { args } => self.run_command(args),
             Cmd::Continue { n } => self.continue_command(n),
+            Cmd::Examine { fmt, address } => self.x_command(fmt, address),
             Cmd::Repeat => self.repeat_command(),
+            Cmd::Run { args } => self.run_command(args),
         }
     }
 
