@@ -137,12 +137,26 @@ impl Debugger {
             Cmd::Break { loc } => self.break_command(loc),
             Cmd::Examine { fmt, address } => self.x_command(fmt, address),
             Cmd::Run { args } => self.run_command(args),
+            Cmd::Continue { n } => self.continue_command(n),
             Cmd::Repeat => self.repeat_command(),
         }
     }
 
     fn break_command(&self, loc: u64) {
         unimplemented!()
+    }
+
+    fn continue_command(&mut self, n: usize) {
+        if self.debugged.is_none() {
+            println!("The program is not being run.");
+            return;
+        }
+
+        if let Some(target) = self.debugged.as_mut() {
+            for _ in 0..n {
+                target.cont()
+            }
+        }
     }
 
     fn run_command(&mut self, args: Vec<String>) {

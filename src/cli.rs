@@ -2,8 +2,7 @@ use std::path::PathBuf;
 
 use failure::{bail, Error};
 use rustyline::{error::ReadlineError, Editor};
-use structopt::clap::AppSettings;
-use structopt::StructOpt;
+use structopt::{clap::AppSettings, StructOpt};
 
 use crate::error::ErrorKind;
 
@@ -36,6 +35,15 @@ pub enum Cmd {
     Run {
         #[structopt(name = "ARGS")]
         args: Vec<String>,
+    },
+    #[structopt(
+        name = "continue",
+        about = "Continue program being debugged, after signal or breakpoint.",
+        template = "{bin} {positionals}"
+    )]
+    Continue {
+        #[structopt(name = "N", default_value = "1")]
+        n: usize,
     },
     #[structopt(
         name = "break",
