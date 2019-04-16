@@ -19,19 +19,6 @@ fn main() {
     }
 }
 
-/// Return a prettily formatted error, including its entire causal chain.
-/// credit: https://github.com/BurntSushi/
-fn pretty_error(err: &failure::Error) -> String {
-    let mut pretty = err.to_string();
-    let mut prev = err.as_fail();
-    while let Some(next) = prev.cause() {
-        pretty.push_str(": ");
-        pretty.push_str(&next.to_string());
-        prev = next;
-    }
-    pretty
-}
-
 fn prompt(opt: Opt) -> Result<()> {
     let mut debugger = Debugger::new(opt.prog, opt.args)?;
 
@@ -61,4 +48,17 @@ fn prompt(opt: Opt) -> Result<()> {
     }
 
     Ok(())
+}
+
+/// Return a prettily formatted error, including its entire causal chain.
+/// credit: https://github.com/BurntSushi/
+fn pretty_error(err: &failure::Error) -> String {
+    let mut pretty = err.to_string();
+    let mut prev = err.as_fail();
+    while let Some(next) = prev.cause() {
+        pretty.push_str(": ");
+        pretty.push_str(&next.to_string());
+        prev = next;
+    }
+    pretty
 }
