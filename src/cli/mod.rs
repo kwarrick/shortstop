@@ -2,7 +2,7 @@ use rustyline::{error::ReadlineError, Editor};
 use structopt::StructOpt;
 
 mod error;
-use error::Error;
+pub use error::Error;
 
 mod opt;
 pub use opt::Opt;
@@ -12,8 +12,8 @@ pub use cmd::{parse_command, Cmd, Fmt};
 
 pub fn prompt_yes_no<P: AsRef<str>>(prompt: P) -> bool {
     let mut rl = Editor::<()>::new();
-    let readline = rl.readline(&format!("{} (y or n) ", prompt.as_ref()));
     loop {
+        let readline = rl.readline(&format!("{} (y or n) ", prompt.as_ref()));
         match readline {
             Ok(ref line) if line.len() > 0 => {
                 match line.chars().next().unwrap() {

@@ -6,7 +6,7 @@ use super::StructOpt;
 #[derive(StructOpt, Debug)]
 pub struct Opt {
     #[structopt(name = "PROG", parse(from_os_str))]
-    pub prog: PathBuf,
+    pub prog: Option<PathBuf>,
     #[structopt(name = "ARGS")]
     pub args: Vec<String>,
 }

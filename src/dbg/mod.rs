@@ -9,14 +9,15 @@ use nix::sys::{
 use nix::unistd::{execvp, fork, ForkResult, Pid};
 
 mod error;
-use error::{ErrorKind, Result};
+pub use error::{Error, ErrorKind, Result};
 
+/// Debugger with generic debugged progam type
 pub struct Debugger {
     prog: PathBuf,
-    args: Vec<String>,
     debugged: Option<Box<dyn Debugged>>,
 }
 
+/// Generic debugged program type
 trait Debugged {
     /// Set breakpoint at specified location
     fn breakpoint(&mut self, vaddr: u64);
@@ -30,6 +31,7 @@ trait Debugged {
     fn step(&mut self, count: usize);
 }
 
+/// Debugging interface for platforms that support ptrace (2)
 struct Ptraced {
     prog: CString,
     pid: Option<Pid>,
@@ -141,7 +143,7 @@ impl Debugged for Ptraced {
 
 /// Interactive debugger type
 impl Debugger {
-    pub fn new<P: AsRef<Path>>(path: P, args: Vec<String>) -> Result<Self> {
+    pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
         let prog = path
             .as_ref()
             .canonicalize()
@@ -149,7 +151,6 @@ impl Debugger {
 
         Ok(Debugger {
             prog,
-            args,
             debugged: None,
         })
     }
@@ -158,40 +159,25 @@ impl Debugger {
         unimplemented!()
     }
 
-    pub fn cont(&mut self, n: usize) {
-        if self.debugged.is_none() {
-            println!("The program is not being run.");
-            return;
-        }
-
+    pub fn cont(&mut self) {
         if let Some(target) = self.debugged.as_mut() {
-            for _ in 0..n {
-                target.cont()
-            }
+            target.cont()
         }
     }
 
     pub fn run(&mut self, args: Vec<String>) {
         // if self.debugged.is_some() {
-        //     println!("The program being debugged has been started already.");
-        //     if !prompt_yes_no("Start it from the beginning?") {
-        //         println!("Program not restarted.");
-        //         return;
-        //     }
         // }
 
         println!(
             "Starting program: {} {}",
             self.prog.display(),
-            self.args.join(" "),
+            args.join(" "),
         );
 
         self.debugged = Some(Ptraced::new(self.prog.clone()));
         if let Some(target) = self.debugged.as_mut() {
-            if args.len() > 0 {
-                self.args = args;
-            }
-            target.run(self.args.clone());
+            target.run(args.clone());
         }
     }
 

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use failure::bail;
 use structopt::{clap::AppSettings, StructOpt};
 
@@ -26,7 +28,7 @@ pub enum Cmd {
     },
     #[structopt(
         name = "continue",
-        about = "Continue program being debugged, after signal or breakpoint.",
+        about = "Continue program being debugged, after signal or breakpoint",
         template = "{bin} {positionals}"
     )]
     Continue {
@@ -35,7 +37,7 @@ pub enum Cmd {
     },
     #[structopt(
         name = "break",
-        about = "Set breakpoint at specified location.",
+        about = "Set breakpoint at specified location",
         template = "{bin} {positionals}"
     )]
     Break {
@@ -45,7 +47,7 @@ pub enum Cmd {
     #[structopt(
         name = "x",
         template = "x/FMT ADDRESS",
-        about = "Examine memory."
+        about = "Examine memory"
     )]
     #[structopt(raw(setting = "AppSettings::AllowLeadingHyphen"))]
     Examine {
@@ -53,6 +55,15 @@ pub enum Cmd {
         fmt: Option<Fmt>,
         #[structopt(name = "ADDRESS")]
         address: Option<u64>,
+    },
+    #[structopt(
+        name = "file",
+        template = "{bin} {positionals}",
+        about = "Use file as program to be debugged"
+    )]
+    File {
+        #[structopt(name = "FILE", parse(from_os_str))]
+        path: PathBuf,
     },
 }
 
