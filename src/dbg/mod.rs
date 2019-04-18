@@ -1,4 +1,5 @@
 use std::ffi::CString;
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 use failure::ResultExt;
@@ -12,13 +13,14 @@ mod error;
 pub use error::{Error, ErrorKind, Result};
 
 /// Debugger with generic debugged progam type
+#[derive(Debug)]
 pub struct Debugger {
     prog: PathBuf,
     debugged: Option<Box<dyn Debugged>>,
 }
 
 /// Generic debugged program type
-trait Debugged {
+trait Debugged: Debug {
     /// Set breakpoint at specified location
     fn breakpoint(&mut self, vaddr: u64);
     /// Continue program execution
@@ -32,6 +34,7 @@ trait Debugged {
 }
 
 /// Debugging interface for platforms that support ptrace (2)
+#[derive(Debug)]
 struct Ptraced {
     prog: CString,
     pid: Option<Pid>,

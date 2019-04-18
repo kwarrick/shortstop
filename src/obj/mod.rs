@@ -3,6 +3,7 @@ use std::path::{Path, PathBuf};
 use failure::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
+#[derive(Debug)]
 pub struct Binary {
     pub path: PathBuf,
 }
