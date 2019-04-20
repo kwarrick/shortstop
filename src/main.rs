@@ -7,7 +7,7 @@ mod app;
 use app::Shortstop;
 
 mod cli;
-use cli::{Cmd, Opt};
+use cli::{Cmd, Opt, Set};
 
 mod dbg;
 use dbg::Debugger;
@@ -27,7 +27,18 @@ fn main() {
 }
 
 fn command_prompt(opt: Opt) -> Result<()> {
-    let mut shortstop = Shortstop::new(opt);
+    let mut shortstop = Shortstop::new(&opt);
+
+    // Set path and args
+    if let Some(path) = opt.prog {
+        if let Err(e) = shortstop.handle_command(Cmd::File { path }) {
+            println!("{}", e);
+        }
+    }
+    shortstop.handle_command(Cmd::Set {
+        expr: None,
+        cmd: Some(Set::Args { args: opt.args }),
+    });
 
     let mut rl = Editor::<()>::new();
     loop {

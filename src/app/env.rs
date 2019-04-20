@@ -12,10 +12,10 @@ struct Config {
 }
 
 impl Config {
-    fn new(opt: Opt) -> Self {
+    fn new(opt: &Opt) -> Self {
         Config {
-            path: opt.prog,
-            args: opt.args,
+            path: opt.prog.clone(),
+            args: opt.args.clone(),
         }
     }
 }
@@ -58,7 +58,11 @@ impl<T> Env<T> {
         Ok(Some(Event::Open(bin)))
     }
 
-    fn set_args(&mut self, args: Vec<String>) -> Result<Option<Event>> {
+    pub fn args(&self) -> Vec<String> {
+        self.config.args.clone()
+    }
+
+    pub fn set_args(&mut self, args: Vec<String>) -> Result<Option<Event>> {
         self.config.args = args;
         Ok(None)
     }
@@ -82,7 +86,7 @@ impl<T> Env<T> {
 /// Handle "environment only" commands when no file has been specified
 impl Env<()> {
     // Build shortstop environment from command-line arguments
-    pub fn new(opt: Opt) -> Self {
+    pub fn new(opt: &Opt) -> Self {
         Env {
             inner: (),
             config: Config::new(opt),

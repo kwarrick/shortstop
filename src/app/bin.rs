@@ -17,8 +17,11 @@ impl Env<Binary> {
     }
 
     fn run_command(&mut self, args: Vec<String>) -> Result<Option<Event>> {
+        if args.len() > 0 {
+            self.set_args(args)?;
+        }
         let mut dbg = Debugger::new(&self.path)?;
-        dbg.run(args);
+        dbg.run(self.args());
         Ok(Some(Event::Run(dbg)))
     }
 }

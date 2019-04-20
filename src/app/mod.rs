@@ -32,7 +32,7 @@ pub struct Shortstop {
 }
 
 impl Shortstop {
-    pub fn new(opt: Opt) -> Self {
+    pub fn new(opt: &Opt) -> Self {
         Shortstop {
             ctx: Some(Context::Env(Env::new(opt))),
         }

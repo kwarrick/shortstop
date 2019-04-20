@@ -183,19 +183,4 @@ impl Debugger {
             target.run(args.clone());
         }
     }
-
-    // pub fn examine(
-    //     &self,
-    //     addr: Option<u64>,
-    //     reverse: bool,
-    //     repeat: usize,
-    //     size: char,
-    //     format: char,
-    // ) {
-    //     unimplemented!()
-    // }
-
-    pub fn repeat(&self) {
-        unimplemented!()
-    }
 }

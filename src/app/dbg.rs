@@ -19,7 +19,7 @@ impl Env<Debugger> {
 
     fn break_command(&mut self, n: u64) -> Result<Option<Event>> {
         bail!("not implemented");
-        Ok(None)
+        // Ok(None)
     }
 
     fn continue_command(&mut self, n: usize) -> Result<Option<Event>> {
@@ -34,8 +34,10 @@ impl Env<Debugger> {
         fmt: Option<Fmt>,
         addr: Option<u64>,
     ) -> Result<Option<Event>> {
+        dbg!(fmt);
+        dbg!(addr);
         bail!("not implemented");
-        Ok(None)
+        // Ok(None)
     }
 
     fn file_command(&mut self, path: PathBuf) -> Result<Option<Event>> {
@@ -52,7 +54,10 @@ impl Env<Debugger> {
         // Prompt to restart program
         println!("The program being debugged has been started already.");
         if cli::prompt_yes_no("Start it from the beginning?") {
-            self.inner.run(args.to_vec())
+            if args.len() > 0 {
+                self.set_args(args)?;
+            }
+            self.inner.run(self.args())
         } else {
             println!("Program not restarted.");
         }
