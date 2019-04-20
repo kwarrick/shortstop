@@ -40,6 +40,10 @@ impl<T> Env<T> {
         self.config.path = Some(path);
     }
 
+    pub fn set_args(&mut self, args: Vec<String>) {
+        self.config.args = args;
+    }
+
     /// Convert to debug context
     pub fn into_debugger(self, dbg: Debugger) -> Env<Debugger> {
         Env {

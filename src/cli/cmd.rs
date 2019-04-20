@@ -65,6 +65,34 @@ pub enum Cmd {
         #[structopt(name = "FILE", parse(from_os_str))]
         path: PathBuf,
     },
+    #[structopt(
+        name = "set",
+        template = "{bin} {positionals}",
+        about = "Commands that modify parts of the debug environment."
+    )]
+    Set {
+        expr: Option<String>,
+        #[structopt(subcommand)]
+        cmd: Option<Set>,
+    },
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(raw(setting = "AppSettings::NoBinaryName"))]
+#[structopt(raw(setting = "AppSettings::VersionlessSubcommands"))]
+#[structopt(raw(setting = "AppSettings::InferSubcommands"))]
+#[structopt(raw(global_setting = "AppSettings::DontCollapseArgsInUsage"))]
+#[structopt(template = "{subcommands}")]
+pub enum Set {
+    #[structopt(
+        name = "args",
+        about = "Set argument list to give program being debugged when it is started",
+        template = "{bin} {positionals}"
+    )]
+    Args {
+        #[structopt(name = "ARGS")]
+        args: Vec<String>,
+    },
 }
 
 /// Format for x, print, and display commands, i.e. x/FMT.
@@ -135,4 +163,37 @@ pub fn parse_command(line: &str) -> Result<Cmd, Error> {
     .map_err(|e| Error::command(line, e))?;
 
     Ok(cmd)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_fmt() {
+        assert_eq!(
+            parse_fmt("32xw").ok(),
+            Some(Fmt {
+                reverse: false,
+                repeat: Some(32),
+                format: Some('x'),
+                size: Some('w'),
+            })
+        );
+        assert_eq!(
+            parse_fmt("-32wx").ok(),
+            Some(Fmt {
+                reverse: true,
+                repeat: Some(32),
+                format: Some('x'),
+                size: Some('w'),
+            })
+        );
+    }
+
+    #[test]
+    fn test_parse_fmt_error() {
+        assert!(parse_fmt("32kx").is_err());
+        assert!(parse_fmt("32wk").is_err());
+    }
 }

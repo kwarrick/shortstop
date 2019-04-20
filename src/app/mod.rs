@@ -1,20 +1,15 @@
-use std::cell::Cell;
-use std::fmt::Debug;
-use std::path::PathBuf;
-
-use failure::bail;
-
 use failure::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
-use crate::{cli, cli::Fmt, Binary, Cmd, Debugger, Env, Opt};
+use crate::{cli, cli::Fmt, cli::Set, Binary, Cmd, Debugger, Env, Opt};
 
-#[derive(Debug)]
-enum Event {
-    Open(Binary),
-    Run(Debugger),
-}
+mod bin;
+mod dbg;
+mod env;
 
+/// Application contexts for command execution, for configuration before a
+/// program is specified, "pure memory" analysis of a program before it is run,
+/// and a context for analysis of a running debugged program.
 #[derive(Debug)]
 enum Context {
     Env(Env<()>),
@@ -22,80 +17,17 @@ enum Context {
     Debug(Env<Debugger>),
 }
 
+/// Application context events
+#[derive(Debug)]
+enum Event {
+    Open(Binary),
+    Run(Debugger),
+}
+
 /// Application top-level
 #[derive(Debug)]
 pub struct Shortstop {
     ctx: Option<Context>,
-}
-
-/// Handle "environment only" commands when no file has been specified
-impl Env<()> {
-    fn handle_command(&mut self, cmd: Cmd) -> Result<Option<Event>> {
-        match cmd {
-            Cmd::File { path } => {
-                self.set_path(path.clone());
-                let bin = Binary::new(path)?;
-                Ok(Some(Event::Open(bin)))
-            }
-            _ => bail!("No executable file specified."),
-        }
-    }
-}
-
-/// Handle "pure memory", static analysis
-impl Env<Binary> {
-    fn handle_command(&mut self, cmd: Cmd) -> Result<Option<Event>> {
-        match cmd {
-            Cmd::Run { args } => Ok(self.run_command(args)?),
-            _ => bail!("The program is not being run."),
-        }
-    }
-
-    fn run_command(&mut self, args: Vec<String>) -> Result<Option<Event>> {
-        let mut dbg = Debugger::new(&self.path)?;
-        dbg.run(args);
-        Ok(Some(Event::Run(dbg)))
-    }
-}
-
-impl Env<Debugger> {
-    fn handle_command(&mut self, cmd: Cmd) -> Result<Option<Event>> {
-        match cmd {
-            Cmd::Run { args } => Ok(self.run_command(args)?),
-            Cmd::Continue { n } => Ok(self.cont_command(n)?),
-            Cmd::Examine { fmt, address } => {
-                Ok(self.examine_command(fmt, address)?)
-            }
-            _ => bail!("not implemented"),
-        }
-    }
-
-    fn run_command(&mut self, args: Vec<String>) -> Result<Option<Event>> {
-        // Prompt to restart program
-        println!("The program being debugged has been started already.");
-        if cli::prompt_yes_no("Start it from the beginning?") {
-            self.inner.run(args.to_vec())
-        } else {
-            println!("Program not restarted.");
-        }
-        Ok(None)
-    }
-
-    fn cont_command(&mut self, n: usize) -> Result<Option<Event>> {
-        for _ in 0..n {
-            self.inner.cont()
-        }
-        Ok(None)
-    }
-
-    fn examine_command(
-        &mut self,
-        fmt: Option<Fmt>,
-        address: Option<u64>,
-    ) -> Result<Option<Event>> {
-        bail!("not implemented");
-        Ok(None)
-    }
 }
 
 impl Shortstop {
