@@ -66,10 +66,12 @@ impl Drop for Ptraced {
 
 impl Debugged for Ptraced {
     fn run(&mut self, args: Vec<String>) {
-        let args = args
+        let mut args = args
             .iter()
             .map(|s| CString::new(s.clone()).unwrap())
             .collect::<Vec<_>>();
+
+        args.insert(0, self.prog.to_owned());
 
         // TODO: replace expects
         match fork().expect("fork failed") {
