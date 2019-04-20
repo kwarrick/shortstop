@@ -12,7 +12,7 @@ use env::Env;
 /// program is specified, "pure memory" analysis of a program before it is run,
 /// and a context for analysis of a running debugged program.
 #[derive(Debug)]
-enum Context {
+pub enum Context {
     Env(Env<()>),
     Static(Env<Binary>),
     Debug(Env<Debugger>),
@@ -20,7 +20,7 @@ enum Context {
 
 /// Application context events
 #[derive(Debug)]
-enum Event {
+pub enum Event {
     Open(Binary),
     Run(Debugger),
 }

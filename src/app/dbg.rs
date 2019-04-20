@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-
 use failure::bail;
+
+use std::path::PathBuf;
 
 use super::*;
 
@@ -18,6 +18,7 @@ impl Env<Debugger> {
     }
 
     fn break_command(&mut self, n: u64) -> Result<Option<Event>> {
+        self.inner.breakpoint(n);
         bail!("not implemented");
         // Ok(None)
     }

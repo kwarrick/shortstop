@@ -5,11 +5,11 @@ use failure::{Backtrace, Context, Fail};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-impl Error {
-    pub fn kind(&self) -> &ErrorKind {
-        self.ctx.get_context()
-    }
-}
+// impl Error {
+//     pub fn kind(&self) -> &ErrorKind {
+//         self.ctx.get_context()
+//     }
+// }
 
 #[derive(Debug)]
 pub struct Error {
@@ -35,33 +35,11 @@ impl fmt::Display for Error {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ErrorKind {
     Path(PathBuf),
-    CommandLine(String),
 }
 
 impl ErrorKind {
     pub fn path<P: AsRef<Path>>(path: P) -> ErrorKind {
         ErrorKind::Path(path.as_ref().to_path_buf())
-    }
-
-    pub fn command(line: &str, error: structopt::clap::Error) -> ErrorKind {
-        use structopt::clap::ErrorKind::*;
-
-        let cmd = line
-            .replacen("/", " ", 1)
-            .split_whitespace()
-            .next()
-            .unwrap();
-
-        let message = match error.kind {
-            UnrecognizedSubcommand => {
-                let cmd =
-                    error.info.unwrap_or_default().pop().unwrap_or_default();
-                format!(r#"Undefined command: "{}".  Try "help"."#, cmd)
-            }
-            _ => error.message,
-        };
-
-        ErrorKind::CommandLine(message)
     }
 }
 
@@ -71,10 +49,6 @@ impl fmt::Display for ErrorKind {
             ErrorKind::Path(ref path) => {
                 //
                 write!(f, "{}", path.display())
-            }
-            ErrorKind::CommandLine(ref s) => {
-                //
-                write!(f, "{}", s)
             }
         }
     }

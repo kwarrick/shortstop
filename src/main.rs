@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use rustyline::{error::ReadlineError, Editor};
 use structopt::StructOpt;
 
@@ -38,7 +36,7 @@ fn command_prompt(opt: Opt) -> Result<()> {
     shortstop.handle_command(Cmd::Set {
         expr: None,
         cmd: Some(Set::Args { args: opt.args }),
-    });
+    })?;
 
     let mut rl = Editor::<()>::new();
     loop {

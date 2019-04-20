@@ -59,7 +59,7 @@ impl Drop for Ptraced {
             if let Err(e) = ptrace::kill(child) {
                 eprintln!("error: kill: {} ({})", e, child);
             }
-            dbg!(waitpid(child, None));
+            dbg!(waitpid(child, None).expect("waitpid"));
         }
     }
 }
@@ -114,7 +114,7 @@ impl Debugged for Ptraced {
             let status = waitpid(pid, None);
 
             match status {
-                Ok(WaitStatus::Exited(pid, code)) => {
+                Ok(WaitStatus::Exited(pid, _code)) => {
                     println!("[Inferior 1 (process {}) exited normally]", pid);
                     self.pid = None;
                 }
@@ -134,14 +134,17 @@ impl Debugged for Ptraced {
     }
 
     fn breakpoint(&mut self, vaddr: u64) {
+        dbg!(vaddr);
         unimplemented!()
     }
 
     fn read(&mut self, vaddr: u64, size: usize) {
+        dbg!((vaddr, size));
         unimplemented!()
     }
 
     fn step(&mut self, count: usize) {
+        dbg!(count);
         unimplemented!()
     }
 }
@@ -161,6 +164,7 @@ impl Debugger {
     }
 
     pub fn breakpoint(&self, loc: u64) {
+        dbg!(loc);
         unimplemented!()
     }
 
@@ -171,9 +175,6 @@ impl Debugger {
     }
 
     pub fn run(&mut self, args: Vec<String>) {
-        // if self.debugged.is_some() {
-        // }
-
         println!(
             "Starting program: {} {}",
             self.prog.display(),

@@ -1,6 +1,6 @@
 use failure::Fail;
 
-pub type Result<T> = std::result::Result<T, Error>;
+// pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, Fail, PartialEq)]
 pub enum Error {
@@ -9,7 +9,7 @@ pub enum Error {
 }
 
 impl Error {
-    pub fn command(line: &str, error: structopt::clap::Error) -> Self {
+    pub fn command(_line: &str, error: structopt::clap::Error) -> Self {
         use structopt::clap::ErrorKind::*;
 
         // let cmd = line

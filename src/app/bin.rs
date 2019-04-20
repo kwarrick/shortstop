@@ -6,14 +6,32 @@ use super::*;
 impl Env<Binary> {
     pub fn handle_command(&mut self, cmd: Cmd) -> Result<Option<Event>> {
         match cmd {
-            Cmd::Break { loc } => Ok(None),
-            Cmd::Continue { n } => bail!("The program is not being run."),
-            Cmd::Examine { fmt, addr } => Ok(None),
-            Cmd::File { path } => Ok(None),
-            Cmd::Repeat => Ok(None),
+            Cmd::Break { loc } => self.break_command(loc),
+            Cmd::Continue { .. } => bail!("The program is not being run."),
+            Cmd::Examine { fmt, addr } => self.examine_command(fmt, addr),
+            Cmd::File { path } => self.set_file(path),
+            Cmd::Repeat => self.repeat_command(),
             Cmd::Run { args } => self.run_command(args),
             Cmd::Set { expr, cmd } => self.handle_set_command(expr, cmd),
         }
+    }
+
+    fn break_command(&mut self, loc: u64) -> Result<Option<Event>> {
+        dbg!(loc);
+        Ok(None)
+    }
+
+    fn examine_command(
+        &mut self,
+        fmt: Option<Fmt>,
+        addr: Option<u64>,
+    ) -> Result<Option<Event>> {
+        dbg!((fmt, addr));
+        Ok(None)
+    }
+
+    fn repeat_command(&mut self) -> Result<Option<Event>> {
+        Ok(None)
     }
 
     fn run_command(&mut self, args: Vec<String>) -> Result<Option<Event>> {
