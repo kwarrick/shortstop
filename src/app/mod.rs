@@ -1,11 +1,12 @@
 use failure::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
-use crate::{cli, cli::Fmt, cli::Set, Binary, Cmd, Debugger, Env, Opt};
+use crate::{cli, cli::Fmt, cli::Set, Binary, Cmd, Debugger, Opt};
 
 mod bin;
 mod dbg;
 mod env;
+use env::Env;
 
 /// Application contexts for command execution, for configuration before a
 /// program is specified, "pure memory" analysis of a program before it is run,
@@ -73,17 +74,21 @@ impl Shortstop {
 
         // Event-based application context switches
         let ctx = match (ctx, event) {
-            // Env -- open file --> Static
+            // Env --[ file ]--> Static
             (Context::Env(env), Some(Event::Open(bin))) => {
                 Context::Static(env.into_binary(bin))
             }
-            // Static -- open file --> Static
+            // Static --[ file ]--> Static
             (Context::Static(oldbin), Some(Event::Open(newbin))) => {
                 Context::Static(oldbin.into_binary(newbin))
             }
-            // Static -- run --> Debug
+            // Static --[ run ]--> Debug
             (Context::Static(bin), Some(Event::Run(dbg))) => {
                 Context::Debug(bin.into_debugger(dbg))
+            }
+            // Debug --[ file ]--> Static
+            (Context::Debug(dbg), Some(Event::Open(bin))) => {
+                Context::Static(dbg.into_binary(bin))
             }
             (ctx, None) => ctx,
             _ => panic!("unhandled application event"),

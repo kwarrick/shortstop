@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use failure::bail;
 
 use super::*;
@@ -5,12 +7,44 @@ use super::*;
 impl Env<Debugger> {
     pub fn handle_command(&mut self, cmd: Cmd) -> Result<Option<Event>> {
         match cmd {
-            Cmd::Run { args } => Ok(self.run_command(args)?),
-            Cmd::Continue { n } => Ok(self.cont_command(n)?),
-            Cmd::Examine { fmt, address } => {
-                Ok(self.examine_command(fmt, address)?)
-            }
-            _ => bail!("not implemented"),
+            Cmd::Break { loc } => self.break_command(loc),
+            Cmd::Continue { n } => self.continue_command(n),
+            Cmd::Examine { fmt, addr } => self.examine_command(fmt, addr),
+            Cmd::File { path } => self.file_command(path),
+            Cmd::Repeat => self.repeat_command(),
+            Cmd::Run { args } => self.run_command(args),
+            Cmd::Set { expr, cmd } => self.handle_set_command(expr, cmd),
+        }
+    }
+
+    fn break_command(&mut self, n: u64) -> Result<Option<Event>> {
+        bail!("not implemented");
+        Ok(None)
+    }
+
+    fn continue_command(&mut self, n: usize) -> Result<Option<Event>> {
+        for _ in 0..n {
+            self.inner.cont()
+        }
+        Ok(None)
+    }
+
+    fn examine_command(
+        &mut self,
+        fmt: Option<Fmt>,
+        addr: Option<u64>,
+    ) -> Result<Option<Event>> {
+        bail!("not implemented");
+        Ok(None)
+    }
+
+    fn file_command(&mut self, path: PathBuf) -> Result<Option<Event>> {
+        println!("A program is being debugged already.");
+        if cli::prompt_yes_no("Are you sure you want to change the file?") {
+            self.set_file(path)
+        } else {
+            println!("File not changed.");
+            Ok(None)
         }
     }
 
@@ -25,19 +59,7 @@ impl Env<Debugger> {
         Ok(None)
     }
 
-    fn cont_command(&mut self, n: usize) -> Result<Option<Event>> {
-        for _ in 0..n {
-            self.inner.cont()
-        }
-        Ok(None)
-    }
-
-    fn examine_command(
-        &mut self,
-        fmt: Option<Fmt>,
-        address: Option<u64>,
-    ) -> Result<Option<Event>> {
-        bail!("not implemented");
+    fn repeat_command(&mut self) -> Result<Option<Event>> {
         Ok(None)
     }
 }

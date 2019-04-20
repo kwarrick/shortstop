@@ -12,9 +12,6 @@ use cli::{Cmd, Opt};
 mod dbg;
 use dbg::Debugger;
 
-mod env;
-use env::Env;
-
 mod obj;
 use obj::Binary;
 

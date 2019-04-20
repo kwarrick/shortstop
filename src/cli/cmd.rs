@@ -54,7 +54,7 @@ pub enum Cmd {
         #[structopt(name = "FMT", parse(try_from_str = "parse_fmt"))]
         fmt: Option<Fmt>,
         #[structopt(name = "ADDRESS")]
-        address: Option<u64>,
+        addr: Option<u64>,
     },
     #[structopt(
         name = "file",

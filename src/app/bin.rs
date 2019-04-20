@@ -6,8 +6,13 @@ use super::*;
 impl Env<Binary> {
     pub fn handle_command(&mut self, cmd: Cmd) -> Result<Option<Event>> {
         match cmd {
-            Cmd::Run { args } => Ok(self.run_command(args)?),
-            _ => bail!("The program is not being run."),
+            Cmd::Break { loc } => Ok(None),
+            Cmd::Continue { n } => bail!("The program is not being run."),
+            Cmd::Examine { fmt, addr } => Ok(None),
+            Cmd::File { path } => Ok(None),
+            Cmd::Repeat => Ok(None),
+            Cmd::Run { args } => self.run_command(args),
+            Cmd::Set { expr, cmd } => self.handle_set_command(expr, cmd),
         }
     }
 
