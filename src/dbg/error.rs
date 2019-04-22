@@ -34,7 +34,10 @@ impl fmt::Display for Error {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum ErrorKind {
+    /// Path related errors
     Path(PathBuf),
+    /// Target program is not running
+    NotRunning,
 }
 
 impl ErrorKind {
@@ -49,6 +52,10 @@ impl fmt::Display for ErrorKind {
             ErrorKind::Path(ref path) => {
                 //
                 write!(f, "{}", path.display())
+            }
+            ErrorKind::NotRunning => {
+                //
+                write!(f, "The program is not being run.")
             }
         }
     }

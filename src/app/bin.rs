@@ -17,7 +17,7 @@ impl Env<Binary> {
     }
 
     fn break_command(&mut self, loc: u64) -> Result<Option<Event>> {
-        dbg!(loc);
+        self.add_breakpoint(loc);
         Ok(None)
     }
 

@@ -1,16 +1,13 @@
-use std::ffi::CString;
 use std::fmt::Debug;
 use std::path::{Path, PathBuf};
 
 use failure::ResultExt;
-use nix::sys::{
-    ptrace,
-    wait::{waitpid, WaitStatus},
-};
-use nix::unistd::{execvp, fork, ForkResult, Pid};
 
 mod error;
 pub use error::{Error, ErrorKind, Result};
+
+mod ptrace;
+use ptrace::Ptraced;
 
 /// Debugger with generic debugged progam type
 #[derive(Debug)]
@@ -20,133 +17,17 @@ pub struct Debugger {
 }
 
 /// Generic debugged program type
-trait Debugged: Debug {
-    /// Set breakpoint at specified location
-    fn breakpoint(&mut self, vaddr: u64);
-    /// Continue program execution
-    fn cont(&mut self);
-    /// Read memory of debugged program
-    fn read(&mut self, vaddr: u64, size: usize);
+pub trait Debugged: Debug {
     /// Start debugged program
     fn run(&mut self, args: Vec<String>);
+    /// Read from memory of debugged program
+    fn read(&mut self, vaddr: u64, size: usize) -> Result<Vec<u8>>;
+    /// Write to memory of debugged program
+    fn write(&mut self, vaddr: u64, data: &[u8]) -> Result<usize>;
+    /// Continue program execution
+    fn cont(&mut self) -> Result<()>;
     /// Step one instruction exactly
     fn step(&mut self, count: usize);
-}
-
-/// Debugging interface for platforms that support ptrace (2)
-#[derive(Debug)]
-struct Ptraced {
-    prog: CString,
-    pid: Option<Pid>,
-    status: Option<WaitStatus>,
-}
-
-impl Ptraced {
-    fn new<P: AsRef<Path>>(path: P) -> Box<dyn Debugged> {
-        let prog = CString::new(path.as_ref().to_str().unwrap())
-            .expect("null byte in string");
-        Box::new(Ptraced {
-            prog,
-            pid: None,
-            status: None,
-        })
-    }
-}
-
-impl Drop for Ptraced {
-    fn drop(&mut self) {
-        if let Some(child) = self.pid {
-            if let Err(e) = ptrace::kill(child) {
-                eprintln!("error: kill: {} ({})", e, child);
-            }
-            dbg!(waitpid(child, None).expect("waitpid"));
-        }
-    }
-}
-
-impl Debugged for Ptraced {
-    fn run(&mut self, args: Vec<String>) {
-        let mut args = args
-            .iter()
-            .map(|s| CString::new(s.clone()).unwrap())
-            .collect::<Vec<_>>();
-
-        args.insert(0, self.prog.to_owned());
-
-        // TODO: replace expects
-        match fork().expect("fork failed") {
-            ForkResult::Child => {
-                // Initiate a trace with ptrace(PTRACE_TRACEME, ...)
-                ptrace::traceme().expect("ptrace failed");
-
-                // Execute PROG with [ARGS]
-                execvp(&self.prog, &args).expect("execvp failed");
-            }
-            ForkResult::Parent { child } => {
-                self.pid = Some(child);
-
-                // Wait for PTRACE_TRACEME in child
-                let _ = waitpid(child, None).expect("waitpid failed");
-
-                // Terminate tracee if the tracer exits
-                ptrace::setoptions(child, ptrace::Options::PTRACE_O_EXITKILL)
-                    .expect("ptrace failed");
-
-                // Stop the tracee on the next clone(2)
-                ptrace::setoptions(child, ptrace::Options::PTRACE_O_TRACECLONE)
-                    .expect("ptrace failed");
-
-                // Wait for clone(2) event, tracee should stop execution at
-                // _start, which is likely actually _start inside ld.so(8) for
-                // dynamically linked executables.
-                let _ = ptrace::getevent(child).expect("ptrace failed");
-
-                self.cont();
-            }
-        }
-    }
-
-    fn cont(&mut self) {
-        if let Some(pid) = self.pid {
-            ptrace::cont(pid, None).unwrap();
-
-            // Wait for debugged program
-            let status = waitpid(pid, None);
-
-            match status {
-                Ok(WaitStatus::Exited(pid, _code)) => {
-                    println!("[Inferior 1 (process {}) exited normally]", pid);
-                    self.pid = None;
-                }
-                Ok(WaitStatus::Signaled(_, signal, _)) => {
-                    println!("Program received signal {}", signal);
-                }
-                Err(e) => {
-                    println!("error: waitpid: {}", e);
-                }
-                Ok(_) => (),
-            }
-
-            self.status = status.ok();
-        } else {
-            println!("The program is not being run.");
-        }
-    }
-
-    fn breakpoint(&mut self, vaddr: u64) {
-        dbg!(vaddr);
-        unimplemented!()
-    }
-
-    fn read(&mut self, vaddr: u64, size: usize) {
-        dbg!((vaddr, size));
-        unimplemented!()
-    }
-
-    fn step(&mut self, count: usize) {
-        dbg!(count);
-        unimplemented!()
-    }
 }
 
 /// Interactive debugger type
@@ -163,15 +44,24 @@ impl Debugger {
         })
     }
 
-    pub fn breakpoint(&self, loc: u64) {
-        dbg!(loc);
+    /// Set a soft breakpoint and return the replaced byte
+    pub fn set_breakpoint(&self, vaddr: u64) -> Result<u8> {
         unimplemented!()
     }
 
-    pub fn cont(&mut self) {
-        if let Some(target) = self.debugged.as_mut() {
-            target.cont()
-        }
+    /// Remove a soft breakpoint, restore saved byte
+    pub fn remove_breakpoint(&self, vaddr: u64, saved: u8) -> Result<()> {
+        unimplemented!()
+    }
+
+    pub fn read(&mut self, vaddr: u64, n: usize) -> Result<Vec<u8>> {
+        let mut target = self.debugged.as_mut().ok_or(ErrorKind::NotRunning)?;
+        target.read(vaddr, n)
+    }
+
+    pub fn cont(&mut self) -> Result<()> {
+        let mut target = self.debugged.as_mut().ok_or(ErrorKind::NotRunning)?;
+        target.cont()
     }
 
     pub fn run(&mut self, args: Vec<String>) {
@@ -185,5 +75,35 @@ impl Debugger {
         if let Some(target) = self.debugged.as_mut() {
             target.run(args.clone());
         }
+    }
+}
+
+/// Soft breakpoint type
+#[derive(Debug)]
+pub struct Breakpoint {
+    addr: u64,
+    enabled: bool,
+    saved: Option<u8>,
+}
+
+impl Breakpoint {
+    pub fn new(addr: u64) -> Self {
+        Breakpoint {
+            addr,
+            enabled: false,
+            saved: None,
+        }
+    }
+
+    fn enable(&mut self, dbg: Debugger) -> Result<()> {
+        self.saved.replace(dbg.set_breakpoint(self.addr)?);
+        Ok(())
+    }
+
+    fn disable(&mut self, dbg: Debugger) -> Result<()> {
+        if let Some(byte) = self.saved {
+            dbg.remove_breakpoint(self.addr, byte)?;
+        }
+        Ok(())
     }
 }

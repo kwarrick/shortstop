@@ -8,10 +8,8 @@ mod cli;
 use cli::{Cmd, Opt, Set};
 
 mod dbg;
-use dbg::Debugger;
 
 mod obj;
-use obj::Binary;
 
 use failure::Error;
 pub type Result<T> = std::result::Result<T, Error>;

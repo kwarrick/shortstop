@@ -2,6 +2,7 @@ use std::ops::Deref;
 use std::path::PathBuf;
 
 use failure::bail;
+use indexmap::IndexMap;
 
 use super::*;
 
@@ -25,6 +26,8 @@ impl Config {
 pub struct Env<T> {
     pub inner: T,
     config: Config,
+    breakpoints: IndexMap<usize, Breakpoint>,
+    next_breakpoint_id: usize,
 }
 
 impl<T> Deref for Env<T> {
@@ -41,6 +44,8 @@ impl<T> Env<T> {
         Env {
             inner: dbg,
             config: self.config,
+            breakpoints: self.breakpoints,
+            next_breakpoint_id: self.next_breakpoint_id,
         }
     }
 
@@ -49,6 +54,8 @@ impl<T> Env<T> {
         Env {
             inner: bin,
             config: self.config,
+            breakpoints: self.breakpoints,
+            next_breakpoint_id: self.next_breakpoint_id,
         }
     }
 
@@ -64,6 +71,13 @@ impl<T> Env<T> {
 
     pub fn set_args(&mut self, args: Vec<String>) -> Result<Option<Event>> {
         self.config.args = args;
+        Ok(None)
+    }
+
+    pub fn add_breakpoint(&mut self, loc: u64) -> Result<Option<Event>> {
+        let breakpoint = Breakpoint::new(loc);
+        self.breakpoints.insert(self.next_breakpoint_id, breakpoint);
+        self.next_breakpoint_id += 1;
         Ok(None)
     }
 
@@ -90,6 +104,8 @@ impl Env<()> {
         Env {
             inner: (),
             config: Config::new(opt),
+            breakpoints: IndexMap::new(),
+            next_breakpoint_id: 0,
         }
     }
 
