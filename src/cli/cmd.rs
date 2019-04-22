@@ -68,7 +68,7 @@ pub enum Cmd {
     #[structopt(
         name = "set",
         template = "{bin} {positionals}",
-        about = "Commands that modify parts of the debug environment."
+        about = "Commands that modify parts of the debug environment"
     )]
     Set {
         expr: Option<String>,
