@@ -17,8 +17,8 @@ impl Env<Debugger> {
         }
     }
 
-    fn break_command(&mut self, n: u64) -> Result<Option<Event>> {
-        self.inner.set_breakpoint(n);
+    fn break_command(&mut self, addr: u64) -> Result<Option<Event>> {
+        self.inner.set_breakpoint(addr as Address);
         Ok(None)
     }
 
@@ -36,8 +36,11 @@ impl Env<Debugger> {
     ) -> Result<Option<Event>> {
         dbg!(fmt);
         dbg!(addr);
-        bail!("not implemented");
-        // Ok(None)
+        if let Some(vaddr) = addr {
+            let data = self.inner.read(vaddr as Address, 1);
+            dbg!(data);
+        }
+        Ok(None)
     }
 
     fn file_command(&mut self, path: PathBuf) -> Result<Option<Event>> {

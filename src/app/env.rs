@@ -75,7 +75,7 @@ impl<T> Env<T> {
     }
 
     pub fn add_breakpoint(&mut self, loc: u64) -> Result<Option<Event>> {
-        let breakpoint = Breakpoint::new(loc);
+        let breakpoint = Breakpoint::new(loc as Address);
         self.breakpoints.insert(self.next_breakpoint_id, breakpoint);
         self.next_breakpoint_id += 1;
         Ok(None)

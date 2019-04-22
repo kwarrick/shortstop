@@ -2,7 +2,7 @@ use failure::Error;
 pub type Result<T> = std::result::Result<T, Error>;
 
 use crate::cli::{self, Cmd, Fmt, Opt, Set};
-use crate::dbg::{Breakpoint, Debugger};
+use crate::dbg::{Address, Breakpoint, Debugger};
 use crate::obj::Binary;
 
 mod bin;

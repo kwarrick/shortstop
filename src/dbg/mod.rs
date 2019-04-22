@@ -9,6 +9,9 @@ pub use error::{Error, ErrorKind, Result};
 mod ptrace;
 use ptrace::Ptraced;
 
+pub type Address = *mut libc::c_void;
+pub type Word = *mut libc::c_void;
+
 /// Debugger with generic debugged progam type
 #[derive(Debug)]
 pub struct Debugger {
@@ -21,9 +24,9 @@ pub trait Debugged: Debug {
     /// Start debugged program
     fn run(&mut self, args: Vec<String>);
     /// Read from memory of debugged program
-    fn read(&mut self, vaddr: u64, size: usize) -> Result<Vec<u8>>;
+    fn read(&mut self, vaddr: Address, size: usize) -> Result<Vec<u8>>;
     /// Write to memory of debugged program
-    fn write(&mut self, vaddr: u64, data: &[u8]) -> Result<usize>;
+    fn write(&mut self, vaddr: Address, data: &[u8]) -> Result<usize>;
     /// Continue program execution
     fn cont(&mut self) -> Result<()>;
     /// Step one instruction exactly
@@ -45,16 +48,20 @@ impl Debugger {
     }
 
     /// Set a soft breakpoint and return the replaced byte
-    pub fn set_breakpoint(&self, vaddr: u64) -> Result<u8> {
+    pub fn set_breakpoint(&self, vaddr: Address) -> Result<u8> {
+        // self.saved = dbg.read(self.address, 1);
+        // let data = ((self.saved & ~0xFF) | 0xCC);
+        // dbg.write(self.address, data);
+        // self.enabled = true;
         unimplemented!()
     }
 
     /// Remove a soft breakpoint, restore saved byte
-    pub fn remove_breakpoint(&self, vaddr: u64, saved: u8) -> Result<()> {
+    pub fn remove_breakpoint(&self, vaddr: Address, saved: u8) -> Result<()> {
         unimplemented!()
     }
 
-    pub fn read(&mut self, vaddr: u64, n: usize) -> Result<Vec<u8>> {
+    pub fn read(&mut self, vaddr: Address, n: usize) -> Result<Vec<u8>> {
         let mut target = self.debugged.as_mut().ok_or(ErrorKind::NotRunning)?;
         target.read(vaddr, n)
     }
@@ -81,13 +88,13 @@ impl Debugger {
 /// Soft breakpoint type
 #[derive(Debug)]
 pub struct Breakpoint {
-    addr: u64,
+    addr: Address,
     enabled: bool,
     saved: Option<u8>,
 }
 
 impl Breakpoint {
-    pub fn new(addr: u64) -> Self {
+    pub fn new(addr: Address) -> Self {
         Breakpoint {
             addr,
             enabled: false,
