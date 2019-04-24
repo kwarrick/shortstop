@@ -38,6 +38,10 @@ pub enum ErrorKind {
     Path(PathBuf),
     /// Target program is not running
     NotRunning,
+    /// Memory read error
+    Read(usize),
+    /// Memory write error
+    Write(usize),
 }
 
 impl ErrorKind {
@@ -56,6 +60,14 @@ impl fmt::Display for ErrorKind {
             ErrorKind::NotRunning => {
                 //
                 write!(f, "The program is not being run.")
+            }
+            ErrorKind::Read(addr) => {
+                //
+                write!(f, "Cannot read memory at address 0x{:x}", addr)
+            }
+            ErrorKind::Write(addr) => {
+                //
+                write!(f, "Cannot write memory at address 0x{:x}", addr)
             }
         }
     }

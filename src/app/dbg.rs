@@ -17,8 +17,8 @@ impl Env<Debugger> {
         }
     }
 
-    fn break_command(&mut self, addr: u64) -> Result<Option<Event>> {
-        self.inner.set_breakpoint(addr as Address);
+    fn break_command(&mut self, addr: usize) -> Result<Option<Event>> {
+        self.inner.set_breakpoint(addr as Address)?;
         Ok(None)
     }
 
@@ -32,14 +32,68 @@ impl Env<Debugger> {
     fn examine_command(
         &mut self,
         fmt: Option<Fmt>,
-        addr: Option<u64>,
+        addr: Option<usize>,
     ) -> Result<Option<Event>> {
-        dbg!(fmt);
-        dbg!(addr);
-        if let Some(vaddr) = addr {
-            let data = self.inner.read(vaddr as Address, 1);
-            dbg!(data);
+        // Update last used format and address
+        if let Some(fmt) = fmt {
+            self.set_fmt(fmt);
         }
+        if let Some(addr) = addr {
+            self.set_addr(addr);
+        }
+
+        let mut addr = match self.addr() {
+            Some(addr) => addr,
+            None => bail!("Argument required (starting display address)."),
+        };
+
+        // Unwrap format with defaults
+        let fmt = self.fmt();
+        let reverse = fmt.reverse;
+        let repeat = fmt.repeat.unwrap_or(1);
+        let size = fmt.size.unwrap_or('w');
+        let format = fmt.format.unwrap_or('x');
+
+        // Convert size char to byte size and column count
+        let (step, size) = match size {
+            'b' => (8, 1),
+            'h' => (8, 2),
+            'w' => (4, 4),
+            'g' => (2, 8),
+            _ => unreachable!(),
+        };
+
+        let mut i = 0;
+        while i < repeat {
+            let mut j = 0;
+            print!("{:#x}: ", addr);
+            while j < step && (i + j) < repeat {
+                // Read bytes
+                let mut bytes = [0; 8];
+
+                self.inner
+                    .read(addr, size)?
+                    .iter()
+                    .enumerate()
+                    .for_each(|(i, byte)| bytes[i] = *byte);
+
+                match format {
+                    'x' => print!(
+                        " {:0width$x}",
+                        usize::from_le_bytes(bytes),
+                        width = size * 2
+                    ),
+                    _ => unimplemented!(),
+                }
+
+                j += 1;
+                addr += size;
+            }
+            println!();
+            i += j;
+        }
+
+        self.set_addr(addr);
         Ok(None)
     }
 

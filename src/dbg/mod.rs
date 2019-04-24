@@ -9,8 +9,8 @@ pub use error::{Error, ErrorKind, Result};
 mod ptrace;
 use ptrace::Ptraced;
 
-pub type Address = *mut libc::c_void;
-pub type Word = *mut libc::c_void;
+pub type Address = usize;
+pub type Word = usize;
 
 /// Debugger with generic debugged progam type
 #[derive(Debug)]
@@ -47,6 +47,10 @@ impl Debugger {
         })
     }
 
+    fn target(&mut self) -> Result<&mut Box<Debugged>> {
+        Ok(self.debugged.as_mut().ok_or(ErrorKind::NotRunning)?)
+    }
+
     /// Set a soft breakpoint and return the replaced byte
     pub fn set_breakpoint(&self, vaddr: Address) -> Result<u8> {
         // self.saved = dbg.read(self.address, 1);
@@ -62,13 +66,15 @@ impl Debugger {
     }
 
     pub fn read(&mut self, vaddr: Address, n: usize) -> Result<Vec<u8>> {
-        let mut target = self.debugged.as_mut().ok_or(ErrorKind::NotRunning)?;
-        target.read(vaddr, n)
+        self.target()?.read(vaddr, n)
+    }
+
+    pub fn write(&mut self, vaddr: Address, data: &[u8]) -> Result<()> {
+        self.target()?.write(vaddr, data).map(|_| ())
     }
 
     pub fn cont(&mut self) -> Result<()> {
-        let mut target = self.debugged.as_mut().ok_or(ErrorKind::NotRunning)?;
-        target.cont()
+        self.target()?.cont()
     }
 
     pub fn run(&mut self, args: Vec<String>) {

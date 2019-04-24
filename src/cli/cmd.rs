@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use failure::bail;
+use failure::{bail, ensure};
 use structopt::{clap::AppSettings, StructOpt};
 
 use super::Error;
@@ -41,8 +41,8 @@ pub enum Cmd {
         template = "{bin} {positionals}"
     )]
     Break {
-        #[structopt(name = "LOCATION")]
-        loc: u64,
+        #[structopt(name = "LOCATION", parse(try_from_str = "parse_addr"))]
+        loc: usize,
     },
     #[structopt(
         name = "x",
@@ -53,8 +53,8 @@ pub enum Cmd {
     Examine {
         #[structopt(name = "FMT", parse(try_from_str = "parse_fmt"))]
         fmt: Option<Fmt>,
-        #[structopt(name = "ADDRESS")]
-        addr: Option<u64>,
+        #[structopt(name = "ADDRESS", parse(try_from_str = "parse_addr"))]
+        addr: Option<usize>,
     },
     #[structopt(
         name = "file",
@@ -98,10 +98,19 @@ pub enum Set {
 /// Format for x, print, and display commands, i.e. x/FMT.
 #[derive(Debug, Default, PartialEq)]
 pub struct Fmt {
-    reverse: bool,
-    repeat: Option<u64>,
-    format: Option<char>,
-    size: Option<char>,
+    pub reverse: bool,
+    pub repeat: Option<u64>,
+    pub format: Option<char>,
+    pub size: Option<char>,
+}
+
+impl Fmt {
+    pub fn update(&mut self, other: Self) {
+        self.reverse = other.reverse;
+        self.repeat = other.repeat.or(self.repeat);
+        self.format = other.format.or(self.format);
+        self.size = other.size.or(self.size);
+    }
 }
 
 /// Parse a FMT for commands like x/FMT, e.g x/32wx
@@ -145,6 +154,25 @@ fn parse_fmt(arg: &str) -> Result<Fmt, failure::Error> {
         }
     }
     Ok(fmt)
+}
+
+/// Parse an address string
+fn parse_addr(arg: &str) -> Result<usize, failure::Error> {
+    ensure!(arg.len() > 0, "Cannot parse empty address string");
+    let arg = arg.to_ascii_lowercase();
+    if arg.starts_with("0x") {
+        // Hex
+        Ok(usize::from_str_radix(&arg[2..], 16)?)
+    } else if arg.starts_with("0b") {
+        // Binary
+        Ok(usize::from_str_radix(&arg[2..], 2)?)
+    } else if arg.starts_with("0o") {
+        // Octal
+        Ok(usize::from_str_radix(&arg[2..], 8)?)
+    } else {
+        // Decimal
+        Ok(usize::from_str_radix(&arg, 10)?)
+    }
 }
 
 /// Tokenize and parse a command line string
@@ -195,5 +223,13 @@ mod tests {
     fn test_parse_fmt_error() {
         assert!(parse_fmt("32kx").is_err());
         assert!(parse_fmt("32wk").is_err());
+    }
+
+    #[test]
+    fn test_parse_addr() {
+        assert_eq!(parse_addr("0x1000").ok(), Some(0x1000));
+        assert_eq!(parse_addr("0b1010").ok(), Some(0b1010));
+        assert_eq!(parse_addr("0o1111").ok(), Some(0o1111));
+        assert_eq!(parse_addr("1234").ok(), Some(1234));
     }
 }

@@ -24,10 +24,16 @@ impl Config {
 /// Environment covers an inner analysis state and applicaton configuration
 #[derive(Debug)]
 pub struct Env<T> {
+    // Application state
     pub inner: T,
+    // Application config
     config: Config,
+    // Breakpoints
     breakpoints: IndexMap<usize, Breakpoint>,
     next_breakpoint_id: usize,
+    // Previous format options
+    last_fmt: Fmt,
+    last_addr: Option<usize>,
 }
 
 impl<T> Deref for Env<T> {
@@ -39,24 +45,26 @@ impl<T> Deref for Env<T> {
 }
 
 impl<T> Env<T> {
-    /// Convert to debug context
-    pub fn into_debugger(self, dbg: Debugger) -> Env<Debugger> {
+    /// Context switch
+    pub fn into_context<U>(self, ctx: U) -> Env<U> {
         Env {
-            inner: dbg,
+            inner: ctx,
             config: self.config,
             breakpoints: self.breakpoints,
             next_breakpoint_id: self.next_breakpoint_id,
+            last_fmt: self.last_fmt,
+            last_addr: self.last_addr,
         }
+    }
+
+    /// Convert to debug context
+    pub fn into_debugger(self, dbg: Debugger) -> Env<Debugger> {
+        self.into_context(dbg)
     }
 
     /// Convert to static object context
     pub fn into_binary(self, bin: Binary) -> Env<Binary> {
-        Env {
-            inner: bin,
-            config: self.config,
-            breakpoints: self.breakpoints,
-            next_breakpoint_id: self.next_breakpoint_id,
-        }
+        self.into_context(bin)
     }
 
     pub fn set_file(&mut self, path: PathBuf) -> Result<Option<Event>> {
@@ -74,7 +82,25 @@ impl<T> Env<T> {
         Ok(None)
     }
 
-    pub fn add_breakpoint(&mut self, loc: u64) -> Result<Option<Event>> {
+    pub fn addr(&self) -> Option<usize> {
+        self.last_addr
+    }
+
+    pub fn set_addr(&mut self, addr: usize) -> Result<Option<Event>> {
+        self.last_addr.replace(addr);
+        Ok(None)
+    }
+
+    pub fn fmt(&self) -> Fmt {
+        Fmt { ..self.last_fmt }
+    }
+
+    pub fn set_fmt(&mut self, fmt: Fmt) -> Result<Option<Event>> {
+        self.last_fmt.update(fmt);
+        Ok(None)
+    }
+
+    pub fn add_breakpoint(&mut self, loc: usize) -> Result<Option<Event>> {
         let breakpoint = Breakpoint::new(loc as Address);
         self.breakpoints.insert(self.next_breakpoint_id, breakpoint);
         self.next_breakpoint_id += 1;
@@ -106,6 +132,8 @@ impl Env<()> {
             config: Config::new(opt),
             breakpoints: IndexMap::new(),
             next_breakpoint_id: 0,
+            last_fmt: Default::default(),
+            last_addr: None,
         }
     }
 

@@ -16,7 +16,7 @@ impl Env<Binary> {
         }
     }
 
-    fn break_command(&mut self, loc: u64) -> Result<Option<Event>> {
+    fn break_command(&mut self, loc: usize) -> Result<Option<Event>> {
         self.add_breakpoint(loc);
         Ok(None)
     }
@@ -24,7 +24,7 @@ impl Env<Binary> {
     fn examine_command(
         &mut self,
         fmt: Option<Fmt>,
-        addr: Option<u64>,
+        addr: Option<usize>,
     ) -> Result<Option<Event>> {
         dbg!((fmt, addr));
         Ok(None)
