@@ -145,7 +145,8 @@ impl Env<()> {
             Cmd::Run { .. }
             | Cmd::Break { .. }
             | Cmd::Continue { .. }
-            | Cmd::Examine { .. } => bail!("No executable file specified."),
+            | Cmd::Examine { .. }
+            | Cmd::Info { .. } => bail!("No executable file specified."),
         }
     }
 }

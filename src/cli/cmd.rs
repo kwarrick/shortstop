@@ -7,10 +7,10 @@ use super::Error;
 
 /// Interactive prompt commands
 #[derive(StructOpt, Debug)]
-#[structopt(raw(setting = "AppSettings::NoBinaryName"))]
-#[structopt(raw(setting = "AppSettings::VersionlessSubcommands"))]
-#[structopt(raw(setting = "AppSettings::InferSubcommands"))]
 #[structopt(raw(setting = "AppSettings::SubcommandRequired"))]
+#[structopt(raw(global_setting = "AppSettings::NoBinaryName"))]
+#[structopt(raw(global_setting = "AppSettings::VersionlessSubcommands"))]
+#[structopt(raw(global_setting = "AppSettings::InferSubcommands"))]
 #[structopt(raw(global_setting = "AppSettings::DontCollapseArgsInUsage"))]
 #[structopt(template = "{subcommands}")]
 pub enum Cmd {
@@ -67,22 +67,49 @@ pub enum Cmd {
     },
     #[structopt(
         name = "set",
-        template = "{bin} {positionals}",
+        template = "{usage}\n{subcommands}",
         about = "Commands that modify parts of the debug environment"
     )]
+    #[structopt(raw(global_setting = "AppSettings::DisableHelpSubcommand"))]
     Set {
         expr: Option<String>,
         #[structopt(subcommand)]
         cmd: Option<Set>,
     },
+    #[structopt(
+        name = "info",
+        template = "{subcommands}",
+        about = "Generic command for showing things about the program being debugged"
+    )]
+    #[structopt(raw(global_setting = "AppSettings::DisableHelpSubcommand"))]
+    Info {
+        #[structopt(subcommand)]
+        cmd: Info,
+    },
+}
+
+/// Show subcommands for showing /proc information
+#[derive(StructOpt, Debug)]
+pub enum Info {
+    #[structopt(
+        name = "proc",
+        template = "{subcommands}",
+        about = "Show /proc process information about any running process."
+    )]
+    Proc {
+        #[structopt(subcommand)]
+        cmd: Proc,
+    },
 }
 
 #[derive(StructOpt, Debug)]
-#[structopt(raw(setting = "AppSettings::NoBinaryName"))]
-#[structopt(raw(setting = "AppSettings::VersionlessSubcommands"))]
-#[structopt(raw(setting = "AppSettings::InferSubcommands"))]
-#[structopt(raw(global_setting = "AppSettings::DontCollapseArgsInUsage"))]
-#[structopt(template = "{subcommands}")]
+pub enum Proc {
+    #[structopt(name = "mappings", about = "List of mapped memory regions")]
+    Mappings,
+}
+
+/// Set subcommands for configuring debugger environment settings
+#[derive(StructOpt, Debug)]
 pub enum Set {
     #[structopt(
         name = "args",

@@ -14,6 +14,7 @@ impl Env<Debugger> {
             Cmd::Repeat => self.repeat_command(),
             Cmd::Run { args } => self.run_command(args),
             Cmd::Set { expr, cmd } => self.handle_set_command(expr, cmd),
+            Cmd::Info { .. } => unimplemented!(),
         }
     }
 
