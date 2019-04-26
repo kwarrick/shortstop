@@ -10,7 +10,6 @@ mod ptrace;
 use ptrace::Ptraced;
 
 pub type Address = usize;
-pub type Word = usize;
 
 /// Debugger with generic debugged progam type
 #[derive(Debug)]
@@ -19,7 +18,7 @@ pub struct Debugger {
     debugged: Option<Box<dyn Debugged>>,
 }
 
-/// Generic debugged program type
+/// Generic debugged program interface
 pub trait Debugged: Debug {
     /// Start debugged program
     fn run(&mut self, args: Vec<String>);
@@ -47,17 +46,19 @@ impl Debugger {
         })
     }
 
+    /// Return mutable reference to inner debugged type
     fn target(&mut self) -> Result<&mut Box<Debugged>> {
         Ok(self.debugged.as_mut().ok_or(ErrorKind::NotRunning)?)
     }
 
     /// Set a soft breakpoint and return the replaced byte
-    pub fn set_breakpoint(&self, vaddr: Address) -> Result<u8> {
-        // self.saved = dbg.read(self.address, 1);
-        // let data = ((self.saved & ~0xFF) | 0xCC);
-        // dbg.write(self.address, data);
-        // self.enabled = true;
-        unimplemented!()
+    pub fn set_breakpoint(&mut self, vaddr: Address) -> Result<u8> {
+        let target = self.target()?;
+        // Read byte at address
+        let bytes = target.read(vaddr, 1)?;
+        // Write int3 for soft breakpoint
+        target.write(vaddr, &vec![0xCC])?;
+        Ok(bytes[0])
     }
 
     /// Remove a soft breakpoint, restore saved byte
@@ -65,18 +66,22 @@ impl Debugger {
         unimplemented!()
     }
 
+    /// Read from memory of debugged process
     pub fn read(&mut self, vaddr: Address, n: usize) -> Result<Vec<u8>> {
         self.target()?.read(vaddr, n)
     }
 
+    /// Write to memory of debugged process
     pub fn write(&mut self, vaddr: Address, data: &[u8]) -> Result<()> {
         self.target()?.write(vaddr, data).map(|_| ())
     }
 
+    /// Continue execution of debugged process
     pub fn cont(&mut self) -> Result<()> {
         self.target()?.cont()
     }
 
+    /// Run a new debugged process
     pub fn run(&mut self, args: Vec<String>) {
         println!(
             "Starting program: {} {}",
@@ -94,12 +99,16 @@ impl Debugger {
 /// Soft breakpoint type
 #[derive(Debug)]
 pub struct Breakpoint {
+    /// Target virtual address
     addr: Address,
+    /// Breakpoint active flag
     enabled: bool,
+    /// Saved instruction byte
     saved: Option<u8>,
 }
 
 impl Breakpoint {
+    /// Create a new breakpoint for a target address
     pub fn new(addr: Address) -> Self {
         Breakpoint {
             addr,
@@ -108,15 +117,19 @@ impl Breakpoint {
         }
     }
 
-    fn enable(&mut self, dbg: Debugger) -> Result<()> {
+    /// Enable breakpoint on debugger
+    fn enable(&mut self, dbg: &mut Debugger) -> Result<()> {
         self.saved.replace(dbg.set_breakpoint(self.addr)?);
+        self.enabled = true;
         Ok(())
     }
 
-    fn disable(&mut self, dbg: Debugger) -> Result<()> {
+    /// Disabled breakpoitn on debugger
+    fn disable(&mut self, dbg: &mut Debugger) -> Result<()> {
         if let Some(byte) = self.saved {
             dbg.remove_breakpoint(self.addr, byte)?;
         }
+        self.enabled = false;
         Ok(())
     }
 }
