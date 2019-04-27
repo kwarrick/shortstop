@@ -6,6 +6,9 @@ use failure::ResultExt;
 mod error;
 pub use error::{Error, ErrorKind, Result};
 
+mod proc;
+use proc::{Proc, ProcReader};
+
 mod ptrace;
 use ptrace::Ptraced;
 
@@ -15,7 +18,7 @@ pub type Address = usize;
 #[derive(Debug)]
 pub struct Debugger {
     prog: PathBuf,
-    debugged: Option<Box<dyn Debugged>>,
+    target: Option<Box<dyn Target>>,
 }
 
 /// Generic debugged program interface
@@ -32,6 +35,11 @@ pub trait Debugged: Debug {
     fn step(&mut self, count: usize);
 }
 
+/// Target is the common interface for a heterogenous set of traits
+pub trait Target: Debugged + Proc {
+    // empty
+}
+
 /// Interactive debugger type
 impl Debugger {
     pub fn new<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -40,15 +48,12 @@ impl Debugger {
             .canonicalize()
             .with_context(|_| ErrorKind::path(&path))?;
 
-        Ok(Debugger {
-            prog,
-            debugged: None,
-        })
+        Ok(Debugger { prog, target: None })
     }
 
     /// Return mutable reference to inner debugged type
-    fn target(&mut self) -> Result<&mut Box<Debugged>> {
-        Ok(self.debugged.as_mut().ok_or(ErrorKind::NotRunning)?)
+    fn target(&mut self) -> Result<&mut Box<Target>> {
+        Ok(self.target.as_mut().ok_or(ErrorKind::NotRunning)?)
     }
 
     /// Set a soft breakpoint and return the replaced byte
@@ -89,10 +94,15 @@ impl Debugger {
             args.join(" "),
         );
 
-        self.debugged = Some(Ptraced::new(self.prog.clone()));
-        if let Some(target) = self.debugged.as_mut() {
+        self.target = Some(Ptraced::new(self.prog.clone()));
+        if let Some(target) = self.target.as_mut() {
             target.run(args.clone());
         }
+    }
+
+    /// Return a /proc reader
+    pub fn proc(&mut self) -> Result<Box<dyn ProcReader>> {
+        Ok(self.target()?.proc())
     }
 }
 

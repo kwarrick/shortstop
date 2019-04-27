@@ -7,13 +7,14 @@ impl Env<Binary> {
     pub fn handle_command(&mut self, cmd: Cmd) -> Result<Option<Event>> {
         match cmd {
             Cmd::Break { loc } => self.break_command(loc),
-            Cmd::Continue { .. } => bail!("The program is not being run."),
             Cmd::Examine { fmt, addr } => self.examine_command(fmt, addr),
             Cmd::File { path } => self.set_file(path),
             Cmd::Repeat => self.repeat_command(),
             Cmd::Run { args } => self.run_command(args),
             Cmd::Set { expr, cmd } => self.handle_set_command(expr, cmd),
-            Cmd::Info { .. } => unimplemented!(),
+            Cmd::Info { .. } | Cmd::Continue { .. } => {
+                bail!("The program is not being run.")
+            }
         }
     }
 

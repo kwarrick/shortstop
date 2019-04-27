@@ -14,7 +14,7 @@ impl Env<Debugger> {
             Cmd::Repeat => self.repeat_command(),
             Cmd::Run { args } => self.run_command(args),
             Cmd::Set { expr, cmd } => self.handle_set_command(expr, cmd),
-            Cmd::Info { .. } => unimplemented!(),
+            Cmd::Info { cmd } => self.info_command(cmd),
         }
     }
 
@@ -123,6 +123,23 @@ impl Env<Debugger> {
     }
 
     fn repeat_command(&mut self) -> Result<Option<Event>> {
+        Ok(None)
+    }
+
+    fn info_command(&mut self, cmd: cli::Info) -> Result<Option<Event>> {
+        match cmd {
+            cli::Info::Proc { cmd } => self.info_proc_command(cmd)?,
+        };
+        Ok(None)
+    }
+
+    fn info_proc_command(&mut self, cmd: cli::Proc) -> Result<Option<Event>> {
+        let proc = self.inner.proc()?;
+        match cmd {
+            cli::Proc::Mappings => {
+                dbg!(proc.proc_maps());
+            }
+        }
         Ok(None)
     }
 }

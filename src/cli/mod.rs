@@ -8,7 +8,7 @@ mod opt;
 pub use opt::Opt;
 
 mod cmd;
-pub use cmd::{parse_command, Cmd, Fmt, Set};
+pub use cmd::{parse_command, Cmd, Fmt, Info, Proc, Set};
 
 pub fn prompt_yes_no<P: AsRef<str>>(prompt: P) -> bool {
     let mut rl = Editor::<()>::new();

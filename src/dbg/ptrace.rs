@@ -7,7 +7,10 @@ use nix::sys::{
 };
 use nix::unistd::{execvp, fork, ForkResult, Pid};
 
-use super::{Address, Debugged, ErrorKind, Result};
+use super::{
+    proc::{Map, Proc, ProcReader},
+    Address, Debugged, ErrorKind, Result, Target,
+};
 
 /// Debugging interface for platforms that support ptrace (2)
 #[derive(Debug)]
@@ -17,8 +20,28 @@ pub struct Ptraced {
     status: Option<WaitStatus>,
 }
 
+impl Target for Ptraced {
+    //
+}
+
+impl Proc for Ptraced {
+    fn proc(&self) -> Box<dyn ProcReader> {
+        Box::new(self.pid().unwrap())
+    }
+}
+
+impl ProcReader for Pid {
+    fn proc_maps(&self) -> Result<Vec<Map>> {
+        std::process::Command::new("/bin/cat")
+            .arg(format!("/proc/{}/maps", self))
+            .status()
+            .expect("command failed");
+        Ok(Vec::new())
+    }
+}
+
 impl Ptraced {
-    pub fn new<P: AsRef<Path>>(path: P) -> Box<dyn Debugged> {
+    pub fn new<P: AsRef<Path>>(path: P) -> Box<dyn Target> {
         let prog = CString::new(path.as_ref().to_str().unwrap())
             .expect("null byte in string");
         Box::new(Ptraced {
