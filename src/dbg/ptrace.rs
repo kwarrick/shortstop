@@ -3,7 +3,6 @@ use std::path::Path;
 
 use nix::sys::{
     ptrace,
-    signal::Signal,
     wait::{waitpid, WaitStatus},
 };
 use nix::unistd::{execvp, fork, ForkResult, Pid};
@@ -122,6 +121,12 @@ impl Debugged for Ptraced {
                 // self.cont();
             }
         }
+    }
+
+    fn pc(&mut self) -> Result<Address> {
+        let pid = self.pid()?;
+        let registers = ptrace::getregs(pid).expect("ptrace failed");
+        Ok(registers.rip as usize)
     }
 
     fn cont(&mut self) -> Result<()> {

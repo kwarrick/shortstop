@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::ops::Range;
 use std::path::PathBuf;
 
-use super::{ErrorKind, Result};
+use super::Result;
 
 #[derive(Debug)]
 pub struct Map {

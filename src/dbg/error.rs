@@ -42,8 +42,8 @@ pub enum ErrorKind {
     Read(usize),
     /// Memory write error
     Write(usize),
-    /// Target debugger incompatible
-    NotSupported,
+    // /// Target debugger incompatible
+    // NotSupported,
 }
 
 impl ErrorKind {
@@ -68,10 +68,9 @@ impl fmt::Display for ErrorKind {
             }
             ErrorKind::Write(addr) => {
                 write!(f, "Cannot write memory at address 0x{:x}", addr)
-            }
-            ErrorKind::NotSupported => {
-                write!(f, "Not supported on this target")
-            }
+            } // ErrorKind::NotSupported => {
+              //     write!(f, "Not supported on this target")
+              // }
         }
     }
 }

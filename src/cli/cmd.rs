@@ -112,7 +112,7 @@ pub enum Info {
     #[structopt(
         name = "proc",
         template = "{subcommands}",
-        about = "Show /proc process information about any running process."
+        about = "Show /proc process information about any running process"
     )]
     Proc {
         #[structopt(subcommand)]
@@ -126,6 +126,15 @@ pub enum Info {
     Breakpoints {
         #[structopt(name = "NUM")]
         args: Vec<usize>,
+    },
+    #[structopt(
+        name = "registers",
+        template = "{bin} {positionals}",
+        about = "List of integer registers and their contents"
+    )]
+    Registers {
+        #[structopt(name = "NAMES")]
+        names: Vec<String>,
     },
 }
 

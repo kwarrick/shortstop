@@ -57,7 +57,7 @@ impl Env<Debugger> {
     fn disable_command(&mut self, args: Vec<usize>) -> Result<Option<Event>> {
         for num in args {
             match self.breakpoints.get_mut(&num) {
-                Some(mut bp) => bp.disable(&mut self.inner)?,
+                Some(bp) => bp.disable(&mut self.inner)?,
                 None => println!("No breakpoint number {}.", num),
             }
         }
@@ -71,10 +71,10 @@ impl Env<Debugger> {
     ) -> Result<Option<Event>> {
         // Update last used format and address
         if let Some(fmt) = fmt {
-            self.set_fmt(fmt);
+            self.set_fmt(fmt)?;
         }
         if let Some(addr) = addr {
-            self.set_addr(addr);
+            self.set_addr(addr)?;
         }
 
         let mut addr = match self.addr() {
@@ -84,7 +84,7 @@ impl Env<Debugger> {
 
         // Unwrap format with defaults
         let fmt = self.fmt();
-        let reverse = fmt.reverse;
+        let _reverse = fmt.reverse;
         let repeat = fmt.repeat.unwrap_or(1);
         let size = fmt.size.unwrap_or('w');
         let format = fmt.format.unwrap_or('x');
@@ -128,7 +128,7 @@ impl Env<Debugger> {
             i += j;
         }
 
-        self.set_addr(addr);
+        self.set_addr(addr)?;
         Ok(None)
     }
 
@@ -166,6 +166,9 @@ impl Env<Debugger> {
             cli::Info::Breakpoints { args } => {
                 self.info_breakpoints_command(args)?
             }
+            cli::Info::Registers { names } => {
+                self.info_registers_command(names)?
+            }
         };
         Ok(None)
     }
@@ -174,7 +177,7 @@ impl Env<Debugger> {
         let proc = self.inner.proc()?;
         match cmd {
             cli::Proc::Mappings => {
-                dbg!(proc.proc_maps());
+                dbg!(proc.proc_maps()?);
             }
         }
         Ok(None)
@@ -182,7 +185,7 @@ impl Env<Debugger> {
 
     fn info_breakpoints_command(
         &mut self,
-        args: Vec<usize>,
+        _args: Vec<usize>,
     ) -> Result<Option<Event>> {
         for (num, bp) in self.breakpoints.iter() {
             let enb = match bp.enabled {
@@ -198,6 +201,15 @@ impl Env<Debugger> {
                 num, "breakpoint", "keep", enb, bp.addr, "",
             );
         }
+        Ok(None)
+    }
+
+    fn info_registers_command(
+        &mut self,
+        _names: Vec<String>,
+    ) -> Result<Option<Event>> {
+        let pc = self.inner.pc()?;
+        println!("{:<15} 0x{:x}   {}", "rip", pc, pc);
         Ok(None)
     }
 }

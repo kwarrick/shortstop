@@ -23,6 +23,8 @@ pub struct Debugger {
 
 /// Generic debugged program interface
 pub trait Debugged: Debug {
+    /// Program counter
+    fn pc(&mut self) -> Result<usize>;
     /// Start debugged program
     fn run(&mut self, args: Vec<String>);
     /// Read from memory of debugged program
@@ -72,9 +74,13 @@ impl Debugger {
         vaddr: Address,
         saved: u8,
     ) -> Result<()> {
-        let target = self.target()?;
-        target.write(vaddr, &vec![saved])?;
+        self.write(vaddr, &vec![saved])?;
         Ok(())
+    }
+
+    /// Read program counter of debugged process
+    pub fn pc(&mut self) -> Result<Address> {
+        self.target()?.pc()
     }
 
     /// Read from memory of debugged process
