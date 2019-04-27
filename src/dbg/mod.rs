@@ -116,7 +116,7 @@ impl Debugger {
 #[derive(Debug)]
 pub struct Breakpoint {
     /// Target virtual address
-    addr: Address,
+    pub addr: Address,
     /// Breakpoint active flag
     pub enabled: bool,
     /// Saved instruction byte

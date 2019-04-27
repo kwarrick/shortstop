@@ -132,7 +132,7 @@ impl Env<()> {
             inner: (),
             config: Config::new(opt),
             breakpoints: IndexMap::new(),
-            next_breakpoint_id: 0,
+            next_breakpoint_id: 1,
             last_fmt: Default::default(),
             last_addr: None,
         }

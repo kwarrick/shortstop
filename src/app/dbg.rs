@@ -184,8 +184,19 @@ impl Env<Debugger> {
         &mut self,
         args: Vec<usize>,
     ) -> Result<Option<Event>> {
-        for bp in self.breakpoints.iter() {
-            dbg!(bp);
+        for (num, bp) in self.breakpoints.iter() {
+            let enb = match bp.enabled {
+                true => "y",
+                false => "n",
+            };
+            println!(
+                "{:10} {:16} {:4} {:3} {:20} {}",
+                "Num", "Type", "Disp", "Enb", "Address", "What"
+            );
+            println!(
+                "{:<10} {:16} {:4} {:3} 0x{:018x} {}",
+                num, "breakpoint", "keep", enb, bp.addr, "",
+            );
         }
         Ok(None)
     }
