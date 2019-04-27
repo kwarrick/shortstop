@@ -3,6 +3,7 @@ use std::path::Path;
 
 use nix::sys::{
     ptrace,
+    signal::Signal,
     wait::{waitpid, WaitStatus},
 };
 use nix::unistd::{execvp, fork, ForkResult, Pid};
@@ -140,10 +141,15 @@ impl Debugged for Ptraced {
             Ok(WaitStatus::Signaled(_, signal, _)) => {
                 println!("Program received signal {}", signal);
             }
+            // Ok(WaitStatus::Stopped(_pid, Signal::SIGINT)) => {
+            //     // hit soft breakpoint
+            // }
             Err(e) => {
                 println!("error: waitpid: {}", e);
             }
-            Ok(_) => (),
+            Ok(e) => {
+                dbg!(e);
+            }
         }
 
         self.status = status.ok();

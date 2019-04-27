@@ -7,6 +7,8 @@ impl Env<Binary> {
     pub fn handle_command(&mut self, cmd: Cmd) -> Result<Option<Event>> {
         match cmd {
             Cmd::Break { loc } => self.break_command(loc),
+            Cmd::Delete { args } => self.delete_command(args),
+            Cmd::Disable { args } => self.disable_command(args),
             Cmd::Examine { fmt, addr } => self.examine_command(fmt, addr),
             Cmd::File { path } => self.set_file(path),
             Cmd::Repeat => self.repeat_command(),
@@ -20,6 +22,24 @@ impl Env<Binary> {
 
     fn break_command(&mut self, loc: usize) -> Result<Option<Event>> {
         self.add_breakpoint(loc);
+        Ok(None)
+    }
+
+    fn delete_command(&mut self, args: Vec<usize>) -> Result<Option<Event>> {
+        for num in args {
+            if self.breakpoints.remove(&num).is_none() {
+                println!("No breakpoint number {}.", num);
+            }
+        }
+        Ok(None)
+    }
+
+    fn disable_command(&mut self, args: Vec<usize>) -> Result<Option<Event>> {
+        for num in args {
+            if let Some(bp) = self.breakpoints.get_mut(&num) {
+                bp.enabled = false;
+            }
+        }
         Ok(None)
     }
 

@@ -9,6 +9,8 @@ impl Env<Debugger> {
         match cmd {
             Cmd::Break { loc } => self.break_command(loc),
             Cmd::Continue { n } => self.continue_command(n),
+            Cmd::Delete { args } => self.delete_command(args),
+            Cmd::Disable { args } => self.disable_command(args),
             Cmd::Examine { fmt, addr } => self.examine_command(fmt, addr),
             Cmd::File { path } => self.file_command(path),
             Cmd::Repeat => self.repeat_command(),
@@ -19,13 +21,45 @@ impl Env<Debugger> {
     }
 
     fn break_command(&mut self, addr: usize) -> Result<Option<Event>> {
-        self.inner.set_breakpoint(addr as Address)?;
+        let num = self.add_breakpoint(addr);
+        self.breakpoints
+            .get_mut(&num)
+            .unwrap()
+            .enable(&mut self.inner)?;
         Ok(None)
     }
 
     fn continue_command(&mut self, n: usize) -> Result<Option<Event>> {
         for _ in 0..n {
             self.inner.cont()?
+        }
+        Ok(None)
+    }
+
+    fn delete_command(&mut self, args: Vec<usize>) -> Result<Option<Event>> {
+        if args.is_empty() {
+            if cli::prompt_yes_no("Delete all breakpoints?") {
+                for (_, mut bp) in self.breakpoints.drain(..) {
+                    bp.disable(&mut self.inner)?;
+                }
+            }
+        } else {
+            for num in args {
+                match self.breakpoints.remove(&num) {
+                    Some(mut bp) => bp.disable(&mut self.inner)?,
+                    None => println!("No breakpoint number {}.", num),
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    fn disable_command(&mut self, args: Vec<usize>) -> Result<Option<Event>> {
+        for num in args {
+            match self.breakpoints.get_mut(&num) {
+                Some(mut bp) => bp.disable(&mut self.inner)?,
+                None => println!("No breakpoint number {}.", num),
+            }
         }
         Ok(None)
     }
@@ -129,6 +163,9 @@ impl Env<Debugger> {
     fn info_command(&mut self, cmd: cli::Info) -> Result<Option<Event>> {
         match cmd {
             cli::Info::Proc { cmd } => self.info_proc_command(cmd)?,
+            cli::Info::Breakpoints { args } => {
+                self.info_breakpoints_command(args)?
+            }
         };
         Ok(None)
     }
@@ -139,6 +176,16 @@ impl Env<Debugger> {
             cli::Proc::Mappings => {
                 dbg!(proc.proc_maps());
             }
+        }
+        Ok(None)
+    }
+
+    fn info_breakpoints_command(
+        &mut self,
+        args: Vec<usize>,
+    ) -> Result<Option<Event>> {
+        for bp in self.breakpoints.iter() {
+            dbg!(bp);
         }
         Ok(None)
     }

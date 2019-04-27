@@ -67,8 +67,14 @@ impl Debugger {
     }
 
     /// Remove a soft breakpoint, restore saved byte
-    pub fn remove_breakpoint(&self, vaddr: Address, saved: u8) -> Result<()> {
-        unimplemented!()
+    pub fn remove_breakpoint(
+        &mut self,
+        vaddr: Address,
+        saved: u8,
+    ) -> Result<()> {
+        let target = self.target()?;
+        target.write(vaddr, &vec![saved])?;
+        Ok(())
     }
 
     /// Read from memory of debugged process
@@ -112,7 +118,7 @@ pub struct Breakpoint {
     /// Target virtual address
     addr: Address,
     /// Breakpoint active flag
-    enabled: bool,
+    pub enabled: bool,
     /// Saved instruction byte
     saved: Option<u8>,
 }
@@ -128,14 +134,14 @@ impl Breakpoint {
     }
 
     /// Enable breakpoint on debugger
-    fn enable(&mut self, dbg: &mut Debugger) -> Result<()> {
+    pub fn enable(&mut self, dbg: &mut Debugger) -> Result<()> {
         self.saved.replace(dbg.set_breakpoint(self.addr)?);
         self.enabled = true;
         Ok(())
     }
 
     /// Disabled breakpoitn on debugger
-    fn disable(&mut self, dbg: &mut Debugger) -> Result<()> {
+    pub fn disable(&mut self, dbg: &mut Debugger) -> Result<()> {
         if let Some(byte) = self.saved {
             dbg.remove_breakpoint(self.addr, byte)?;
         }

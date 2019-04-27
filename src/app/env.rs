@@ -29,7 +29,7 @@ pub struct Env<T> {
     // Application config
     config: Config,
     // Breakpoints
-    breakpoints: IndexMap<usize, Breakpoint>,
+    pub(super) breakpoints: IndexMap<usize, Breakpoint>,
     next_breakpoint_id: usize,
     // Previous format options
     last_fmt: Fmt,
@@ -100,11 +100,12 @@ impl<T> Env<T> {
         Ok(None)
     }
 
-    pub fn add_breakpoint(&mut self, loc: usize) -> Result<Option<Event>> {
+    pub fn add_breakpoint(&mut self, loc: usize) -> usize {
+        let num = self.next_breakpoint_id;
         let breakpoint = Breakpoint::new(loc as Address);
-        self.breakpoints.insert(self.next_breakpoint_id, breakpoint);
+        self.breakpoints.insert(num, breakpoint);
         self.next_breakpoint_id += 1;
-        Ok(None)
+        num
     }
 
     pub fn handle_set_command(
@@ -125,7 +126,7 @@ impl<T> Env<T> {
 
 /// Handle "environment only" commands when no file has been specified
 impl Env<()> {
-    // Build shortstop environment from command-line arguments
+    /// Build shortstop environment from command-line arguments
     pub fn new(opt: &Opt) -> Self {
         Env {
             inner: (),
@@ -143,7 +144,9 @@ impl Env<()> {
             Cmd::Set { expr, cmd } => self.handle_set_command(expr, cmd),
             Cmd::Repeat => Ok(None),
             Cmd::Run { .. }
-            | Cmd::Break { .. }
+            | Cmd::Break { .. }      // TODO
+            | Cmd::Delete { .. }     // TODO
+            | Cmd::Disable { .. }    // TODO
             | Cmd::Continue { .. }
             | Cmd::Examine { .. }
             | Cmd::Info { .. } => bail!("No executable file specified."),

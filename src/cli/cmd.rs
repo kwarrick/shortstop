@@ -36,6 +36,24 @@ pub enum Cmd {
         n: usize,
     },
     #[structopt(
+        name = "delete",
+        about = "Delete some breakpoints",
+        template = "{bin} {positionals}"
+    )]
+    Delete {
+        #[structopt(name = "NUMS")]
+        args: Vec<usize>,
+    },
+    #[structopt(
+        name = "disable",
+        about = "Disable some breakpoints.",
+        template = "{bin} {positionals}"
+    )]
+    Disable {
+        #[structopt(name = "NUMS")]
+        args: Vec<usize>,
+    },
+    #[structopt(
         name = "break",
         about = "Set breakpoint at specified location",
         template = "{bin} {positionals}"
@@ -99,6 +117,15 @@ pub enum Info {
     Proc {
         #[structopt(subcommand)]
         cmd: Proc,
+    },
+    #[structopt(
+        name = "breakpoints",
+        template = "{bin} {positionals}",
+        about = "Status of specified breakpoints"
+    )]
+    Breakpoints {
+        #[structopt(name = "NUM")]
+        args: Vec<usize>,
     },
 }
 
