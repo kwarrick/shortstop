@@ -147,7 +147,9 @@ impl Env<()> {
             | Cmd::Break { .. }      // TODO
             | Cmd::Delete { .. }     // TODO
             | Cmd::Disable { .. }    // TODO
+            | Cmd::Enable { .. }     // TODO
             | Cmd::Continue { .. }
+            | Cmd::Stepi { .. }
             | Cmd::Examine { .. }
             | Cmd::Info { .. } => bail!("No executable file specified."),
         }

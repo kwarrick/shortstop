@@ -3,13 +3,14 @@ use std::path::Path;
 
 use nix::sys::{
     ptrace,
+    signal::Signal,
     wait::{waitpid, WaitStatus},
 };
 use nix::unistd::{execvp, fork, ForkResult, Pid};
 
 use super::{
     proc::{Map, Proc, ProcReader},
-    Address, Debugged, ErrorKind, Result, Target,
+    Address, Debugged, ErrorKind, Event, Result, Target,
 };
 
 /// Debugging interface for platforms that support ptrace (2)
@@ -67,6 +68,39 @@ impl Ptraced {
             ptrace::write(self.pid()?, addr as ptrace::AddressType, word)
                 .map_err(|_| ErrorKind::Write(addr))?,
         )
+    }
+
+    fn wait(&mut self) -> Result<Event> {
+        let pid = self.pid()?;
+
+        let status = waitpid(pid, None).expect("waitpid failed");
+
+        let event = match status {
+            WaitStatus::Exited(pid, code) => {
+                self.pid = None;
+                Event::Exited(pid.as_raw() as usize, code)
+            }
+            WaitStatus::Signaled(..) => Event::Signal,
+            WaitStatus::Stopped(_, Signal::SIGTRAP) => {
+                // TODO: we should decrement in the event receiver, dbg.rs,
+                // where we can match a user-defined breakpoint with this INT3
+                // Decrement program counter
+                let mut regs = ptrace::getregs(pid).unwrap();
+                let word = self.read_word((regs.rip - 1) as usize)?;
+                if word[0] == 0xCC {
+                    regs.rip -= 1;
+                    ptrace::setregs(pid, regs).expect("setregs failed");
+                }
+                Event::Stopped
+            }
+            status => {
+                dbg!(status);
+                Err(ErrorKind::ProcessEvent)?
+            }
+        };
+
+        self.status = Some(status);
+        Ok(event)
     }
 }
 
@@ -129,36 +163,10 @@ impl Debugged for Ptraced {
         Ok(registers.rip as usize)
     }
 
-    fn cont(&mut self) -> Result<()> {
+    fn cont(&mut self) -> Result<Event> {
         let pid = self.pid()?;
-
-        // Continue
         ptrace::cont(pid, None).unwrap();
-
-        // Wait for debugged program
-        let status = waitpid(pid, None);
-
-        match status {
-            Ok(WaitStatus::Exited(pid, _code)) => {
-                println!("[Inferior 1 (process {}) exited normally]", pid);
-                self.pid = None;
-            }
-            Ok(WaitStatus::Signaled(_, signal, _)) => {
-                println!("Program received signal {}", signal);
-            }
-            // Ok(WaitStatus::Stopped(_pid, Signal::SIGINT)) => {
-            //     // hit soft breakpoint
-            // }
-            Err(e) => {
-                println!("error: waitpid: {}", e);
-            }
-            Ok(e) => {
-                dbg!(e);
-            }
-        }
-
-        self.status = status.ok();
-        Ok(())
+        self.wait()
     }
 
     fn read(&mut self, vaddr: Address, size: usize) -> Result<Vec<u8>> {
@@ -203,8 +211,9 @@ impl Debugged for Ptraced {
         Ok((i + j) * word_size)
     }
 
-    fn step(&mut self, count: usize) {
-        dbg!(count);
-        unimplemented!()
+    fn step(&mut self) -> Result<Event> {
+        let pid = self.pid()?;
+        ptrace::step(pid, None).expect("ptrace single step failed");
+        self.wait()
     }
 }
