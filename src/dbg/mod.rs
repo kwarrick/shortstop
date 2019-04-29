@@ -13,6 +13,7 @@ mod ptrace;
 use ptrace::Ptraced;
 
 pub type Address = usize;
+pub type Pid = usize;
 
 /// Debugger with generic debugged progam type
 #[derive(Debug)]
@@ -32,14 +33,22 @@ pub trait Debugged: Debug {
     /// Write to memory of debugged program
     fn write(&mut self, vaddr: Address, data: &[u8]) -> Result<usize>;
     /// Continue program execution
-    fn cont(&mut self) -> Result<()>;
+    fn cont(&mut self) -> Result<Event>;
     /// Step one instruction exactly
-    fn step(&mut self, count: usize);
+    fn step(&mut self) -> Result<Event>;
 }
 
 /// Target is the common interface for a heterogenous set of traits
 pub trait Target: Debugged + Proc {
     // empty
+}
+
+/// Debugged process event
+#[derive(Debug)]
+pub enum Event {
+    Exited(Pid, i32),
+    Stopped,
+    Signal,
 }
 
 /// Interactive debugger type
@@ -94,8 +103,13 @@ impl Debugger {
     }
 
     /// Continue execution of debugged process
-    pub fn cont(&mut self) -> Result<()> {
+    pub fn cont(&mut self) -> Result<Event> {
         self.target()?.cont()
+    }
+
+    /// Single step the debugged process
+    pub fn step(&mut self) -> Result<Event> {
+        self.target()?.step()
     }
 
     /// Run a new debugged process

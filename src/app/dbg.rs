@@ -9,8 +9,10 @@ impl Env<Debugger> {
         match cmd {
             Cmd::Break { loc } => self.break_command(loc),
             Cmd::Continue { n } => self.continue_command(n),
+            Cmd::Stepi { n } => self.stepi_command(n),
             Cmd::Delete { args } => self.delete_command(args),
             Cmd::Disable { args } => self.disable_command(args),
+            Cmd::Enable { args } => self.enable_command(args),
             Cmd::Examine { fmt, addr } => self.examine_command(fmt, addr),
             Cmd::File { path } => self.file_command(path),
             Cmd::Repeat => self.repeat_command(),
@@ -30,8 +32,42 @@ impl Env<Debugger> {
     }
 
     fn continue_command(&mut self, n: usize) -> Result<Option<Event>> {
+        println!("Continuing.");
         for _ in 0..n {
-            self.inner.cont()?
+            // Step over breakpoints on this address
+            let pc = self.inner.pc()?;
+
+            for (_, bp) in self.breakpoints.iter_mut() {
+                if bp.addr == pc {
+                    bp.disable(&mut self.inner)?;
+                    self.inner.step()?;
+                    bp.enable(&mut self.inner)?;
+                }
+            }
+            // Continue execution
+            match self.inner.cont()? {
+                event @ DebugEvent::Exited(..) => {
+                    return Ok(Some(Event::Process(event)));
+                }
+                DebugEvent::Stopped => {
+                    let pc = self.inner.pc()?;
+                    for (num, bp) in self.breakpoints.iter_mut() {
+                        if bp.addr == pc {
+                            println!("Breakpoint {}, 0x{:x} in ??", num, pc);
+                        }
+                    }
+                }
+                e => {
+                    dbg!(e);
+                }
+            }
+        }
+        Ok(None)
+    }
+
+    fn stepi_command(&mut self, n: usize) -> Result<Option<Event>> {
+        for _ in 0..n {
+            self.inner.step()?;
         }
         Ok(None)
     }
@@ -58,6 +94,16 @@ impl Env<Debugger> {
         for num in args {
             match self.breakpoints.get_mut(&num) {
                 Some(bp) => bp.disable(&mut self.inner)?,
+                None => println!("No breakpoint number {}.", num),
+            }
+        }
+        Ok(None)
+    }
+
+    fn enable_command(&mut self, args: Vec<usize>) -> Result<Option<Event>> {
+        for num in args {
+            match self.breakpoints.get_mut(&num) {
+                Some(bp) => bp.enable(&mut self.inner)?,
                 None => println!("No breakpoint number {}.", num),
             }
         }

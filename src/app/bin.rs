@@ -9,12 +9,13 @@ impl Env<Binary> {
             Cmd::Break { loc } => self.break_command(loc),
             Cmd::Delete { args } => self.delete_command(args),
             Cmd::Disable { args } => self.disable_command(args),
+            Cmd::Enable { args } => self.enable_command(args),
             Cmd::Examine { fmt, addr } => self.examine_command(fmt, addr),
             Cmd::File { path } => self.set_file(path),
             Cmd::Repeat => self.repeat_command(),
             Cmd::Run { args } => self.run_command(args),
             Cmd::Set { expr, cmd } => self.handle_set_command(expr, cmd),
-            Cmd::Info { .. } | Cmd::Continue { .. } => {
+            Cmd::Info { .. } | Cmd::Continue { .. } | Cmd::Stepi { .. } => {
                 bail!("The program is not being run.")
             }
         }
@@ -38,6 +39,15 @@ impl Env<Binary> {
         for num in args {
             if let Some(bp) = self.breakpoints.get_mut(&num) {
                 bp.enabled = false;
+            }
+        }
+        Ok(None)
+    }
+
+    fn enable_command(&mut self, args: Vec<usize>) -> Result<Option<Event>> {
+        for num in args {
+            if let Some(bp) = self.breakpoints.get_mut(&num) {
+                bp.enabled = true;
             }
         }
         Ok(None)

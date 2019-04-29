@@ -36,6 +36,15 @@ pub enum Cmd {
         n: usize,
     },
     #[structopt(
+        name = "stepi",
+        about = "Step one instruction exactly",
+        template = "{bin} {positionals}"
+    )]
+    Stepi {
+        #[structopt(name = "N", default_value = "1")]
+        n: usize,
+    },
+    #[structopt(
         name = "delete",
         about = "Delete some breakpoints",
         template = "{bin} {positionals}"
@@ -46,10 +55,19 @@ pub enum Cmd {
     },
     #[structopt(
         name = "disable",
-        about = "Disable some breakpoints.",
+        about = "Disable some breakpoints",
         template = "{bin} {positionals}"
     )]
     Disable {
+        #[structopt(name = "NUMS")]
+        args: Vec<usize>,
+    },
+    #[structopt(
+        name = "enable",
+        about = "Enable some breakpoints",
+        template = "{bin} {positionals}"
+    )]
+    Enable {
         #[structopt(name = "NUMS")]
         args: Vec<usize>,
     },

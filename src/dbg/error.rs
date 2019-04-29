@@ -44,6 +44,8 @@ pub enum ErrorKind {
     Write(usize),
     // /// Target debugger incompatible
     // NotSupported,
+    /// Process event related error
+    ProcessEvent,
 }
 
 impl ErrorKind {
@@ -68,6 +70,9 @@ impl fmt::Display for ErrorKind {
             }
             ErrorKind::Write(addr) => {
                 write!(f, "Cannot write memory at address 0x{:x}", addr)
+            }
+            ErrorKind::ProcessEvent => {
+                write!(f, "Error handling process event")
             } // ErrorKind::NotSupported => {
               //     write!(f, "Not supported on this target")
               // }

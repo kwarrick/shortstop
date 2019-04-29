@@ -1,8 +1,9 @@
 use failure::Error;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 use crate::cli::{self, Cmd, Fmt, Opt, Set};
-use crate::dbg::{Address, Breakpoint, Debugger};
+use crate::dbg::{Address, Breakpoint, Debugger, Event as DebugEvent};
 use crate::obj::Binary;
 
 mod bin;
@@ -25,6 +26,7 @@ pub enum Context {
 pub enum Event {
     Open(Binary),
     Run(Debugger),
+    Process(DebugEvent),
 }
 
 /// Application top-level
@@ -92,6 +94,23 @@ impl Shortstop {
             (Context::Debug(dbg), Some(Event::Open(bin))) => {
                 Context::Static(dbg.into_binary(bin))
             }
+            (Context::Debug(dbg), Some(Event::Process(event))) => match event {
+                DebugEvent::Exited(pid, status) => {
+                    let status = match status {
+                        0 => format!("normally"),
+                        _ => format!("with code {}", status),
+                    };
+                    println!(
+                        "[Inferior 1 (process {}) exited {}]",
+                        pid, status
+                    );
+                    Context::Debug(dbg) // TODO: static ctx from exited process
+                }
+                event => {
+                    dbg!(event);
+                    Context::Debug(dbg)
+                }
+            },
             (ctx, None) => ctx,
             _ => panic!("unhandled application event"),
         };
