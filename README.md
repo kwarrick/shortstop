@@ -1,6 +1,6 @@
 # shortstop
 
-Shortstop is a toy debugger written to experiment with aa few things:
+Shortstop is a toy debugger written to experiment with a few things:
 
 - Continue learning Rust.
 - Generating linker/loader parity tests.
