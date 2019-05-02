@@ -2,7 +2,6 @@
 
 Shortstop is a toy debugger written to experiment with a few things:
 
-- Continue learning Rust.
 - Generating linker/loader parity tests.
 - Creating generic debugger traits in Rust.
 - Counter-anti-debugging techniques.
